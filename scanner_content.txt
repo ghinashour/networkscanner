@@ -1,0 +1,11 @@
+Scapy - ARP scanning, packet capture, MAC detection
+
+Nmap - Port scanning, OS detection
+
+Python-nmap - Service detection, banner grabbing
+
+mDNS - Apple/Bonjour device discovery
+
+NetBIOS - Windows device discovery with hostnames
+
+ML - Device type classification

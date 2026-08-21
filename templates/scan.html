@@ -1,0 +1,1329 @@
+{% extends "base.html" %} {% block content %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/scan.css') }}"
+/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="page-header">
+  <h1><i class="fas fa-radar"></i> Network Scan</h1>
+  <div class="header-actions">
+    <button class="btn btn-success" onclick="startRealScan()">
+      <i class="fas fa-wifi"></i> Start Scan
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="loadCurrentDevices()">
+      <i class="fas fa-sync"></i> Refresh
+    </button>
+    <button
+      class="btn btn-primary btn-sm"
+      id="exportCsvBtn"
+      onclick="exportResults()"
+      disabled
+    >
+      <i class="fas fa-download"></i> Export CSV
+    </button>
+    <button
+      class="btn btn-primary btn-sm"
+      id="exportPdfBtn"
+      onclick="exportPdf()"
+      style="display: none"
+    >
+      <i class="fas fa-file-pdf"></i> Export PDF
+    </button>
+  </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-server"></i></div>
+    <div class="stat-content">
+      <div class="stat-number" id="statTotalDevices">0</div>
+      <div class="stat-label">Total Devices</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-triangle-exclamation"></i></div>
+    <div class="stat-content">
+      <div class="stat-number" id="statCriticalVulns">0</div>
+      <div class="stat-label">Critical CVEs</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+    <div class="stat-content">
+      <div class="stat-number" id="statAvgRisk">0</div>
+      <div class="stat-label">Avg Risk Score</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-shield-virus"></i></div>
+    <div class="stat-content">
+      <div class="stat-number" id="statHighRisk">0</div>
+      <div class="stat-label">High-Risk Devices</div>
+    </div>
+  </div>
+</div>
+
+<!-- Scan Configuration -->
+<div class="scan-config-section">
+  <h3>⚙️ Scan Configuration</h3>
+  <div class="config-grid">
+    <div class="config-item">
+      <label>🎯 Target Network</label>
+      <input type="text" id="targetNetwork" value="192.168.1.0/24" />
+    </div>
+    <div class="config-item">
+      <label>⏱️ Timeout (seconds)</label>
+      <input type="number" id="scanTimeout" value="30" min="10" max="300" />
+    </div>
+    <div class="config-item">
+      <label><i class="fas fa-rotate"></i> Max Retries</label>
+      <input type="number" id="maxRetries" value="3" min="1" max="10" />
+    </div>
+  </div>
+</div>
+
+<!-- Scan Progress -->
+<div id="scanStatus" class="scan-status" style="display: none">
+  <h3><i class="fas fa-chart-line"></i> Scan Progress</h3>
+  <div class="progress-container">
+    <div class="progress-bar">
+      <div id="scanProgress" class="progress-fill"></div>
+    </div>
+    <div id="scanStatusText" class="progress-text">0%</div>
+  </div>
+  <div id="scanDetails" class="scan-details"></div>
+  <div id="scanTimer" class="scan-timer"></div>
+</div>
+
+<!-- Tabs: Results, Charts, History -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="results">Results</button>
+  <button class="tab-btn" data-tab="charts">Charts</button>
+  <button class="tab-btn" data-tab="history">History</button>
+</div>
+
+<!-- Tab Content -->
+<div id="tab-results" class="tab-content active">
+  <!-- Source Breakdown -->
+  <div class="source-breakdown">
+    <h3><i class="fas fa-diagram-project"></i> Discovery Source Breakdown</h3>
+    <div id="sourceBreakdownContainer" class="source-breakdown-grid"></div>
+  </div>
+
+  <!-- Discovered Devices Table -->
+  <div class="discovered-devices">
+    <h3>📡 Discovered Devices</h3>
+    <div style="overflow-x: auto">
+      <table class="device-table" id="discoveredDevicesTable">
+        <thead>
+          <tr>
+            <th>IP Address</th>
+            <th>Hostname</th>
+            <th>MAC Address</th>
+            <th>Brand</th>
+            <th>Device Type</th>
+            <th>OS</th>
+            <th>Open Ports</th>
+            <th>Confidence</th>
+            <th>Source</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="discoveredDevicesBody">
+          <tr>
+            <td colspan="10" class="empty-state">No devices discovered yet</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Scan Log -->
+  <div class="scan-log">
+    <h3><i class="fas fa-clipboard-list"></i> Scan Log</h3>
+    <div id="scanLog" class="log-container">
+      <div class="log-entry info">
+        <i class="fas fa-hourglass-start"></i> Ready to scan
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-charts" class="tab-content">
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h4>Device Types</h4>
+      <canvas id="deviceTypeChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h4>OS Distribution</h4>
+      <canvas id="osChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h4>Risk Levels</h4>
+      <canvas id="riskChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h4>Vulnerability Trend (Last 7 Days)</h4>
+      <canvas id="trendChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div id="tab-history" class="tab-content">
+  <div class="scan-history">
+    <h3>📜 Scan History</h3>
+    <div style="overflow-x: auto">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Target</th>
+            <th>Devices</th>
+            <th>NMAP</th>
+            <th>mDNS</th>
+            <th>Windows</th>
+            <th>Other</th>
+            <th>Duration (s)</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody">
+          <tr>
+            <td colspan="8" class="empty-state">No scan history yet</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Device Detail Modal -->
+<div id="deviceDetailModal" class="modal" style="display: none">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="modalDeviceTitle">Device Details</h2>
+      <button onclick="closeDeviceModal()" class="modal-close">✕</button>
+    </div>
+    <div id="modalDeviceContent"></div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toastContainer" class="toast-container"></div>
+
+<!-- Hidden field for current job ID -->
+<input type="hidden" id="currentJobId" value="" />
+
+<style>
+  /* ====== ENTERPRISE DARK THEME ====== */
+  :root {
+    --bg-primary: #0b0e14;
+    --bg-secondary: #131a22;
+    --bg-card: #1a232e;
+    --border-color: #2a3a4a;
+    --text-primary: #e8edf5;
+    --text-secondary: #8a9baa;
+    --accent: #4a9eff;
+    --accent-glow: rgba(74, 158, 255, 0.3);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family:
+      "Segoe UI",
+      system-ui,
+      -apple-system,
+      sans-serif;
+    margin: 0;
+    padding: 20px;
+  }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+  .page-header h1 {
+    font-size: 28px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #4a9eff, #6c5ce7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+  }
+  .header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    padding: 8px 18px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+  }
+  .btn:hover {
+    opacity: 0.85;
+    transform: translateY(-1px);
+  }
+  .btn-success {
+    background: #00c853;
+    color: #fff;
+    border-color: #00c853;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .btn-secondary {
+    background: var(--bg-secondary);
+  }
+  .btn-sm {
+    padding: 4px 12px;
+    font-size: 12px;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Stats Grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: 0.2s;
+  }
+  .stat-card:hover {
+    border-color: var(--accent);
+  }
+  .stat-icon {
+    font-size: 28px;
+  }
+  .stat-content {
+    flex: 1;
+  }
+  .stat-number {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .stat-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 20px;
+  }
+  .tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: 0.2s;
+  }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .tab-content {
+    display: none;
+  }
+  .tab-content.active {
+    display: block;
+  }
+
+  .scan-config-section,
+  .source-breakdown,
+  .discovered-devices,
+  .scan-log,
+  .scan-history {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .config-item label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+  .config-item input,
+  .config-item select {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 14px;
+  }
+
+  .progress-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 12px 0;
+  }
+  .progress-bar {
+    flex: 1;
+    height: 8px;
+    background: var(--bg-primary);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #4a9eff, #6c5ce7);
+    transition: width 0.3s;
+  }
+
+  .source-breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+  .source-group {
+    background: var(--bg-primary);
+    border-radius: 8px;
+    padding: 12px;
+    border-left: 4px solid var(--text-secondary);
+  }
+  .source-group.nmap {
+    border-left-color: #00d4ff;
+  }
+  .source-group.mdns {
+    border-left-color: #ff8800;
+  }
+  .source-group.windows {
+    border-left-color: #00ff88;
+  }
+  .source-group.other {
+    border-left-color: #8899aa;
+  }
+
+  .source-group-title {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .source-group-ips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .source-group-ips .ip {
+    background: var(--bg-secondary);
+    padding: 2px 8px;
+    border-radius: 12px;
+  }
+
+  .device-table,
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .device-table th,
+  .history-table th {
+    text-align: left;
+    padding: 10px;
+    border-bottom: 2px solid var(--border-color);
+    color: var(--text-secondary);
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 11px;
+  }
+  .device-table td,
+  .history-table td {
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .device-table tr:hover {
+    background: var(--bg-card);
+  }
+
+  .device-type-badge {
+    background: var(--accent-glow);
+    color: var(--accent);
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+  .source-badge {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    margin: 0 2px;
+  }
+  .source-nmap {
+    background: #00d4ff33;
+    color: #00d4ff;
+  }
+  .source-mdns {
+    background: #ff880033;
+    color: #ff8800;
+  }
+  .source-windows {
+    background: #00ff8833;
+    color: #00ff88;
+  }
+  .source-other {
+    background: #8899aa33;
+    color: #8899aa;
+  }
+
+  .confidence-bar {
+    display: inline-block;
+    width: 80px;
+    height: 6px;
+    background: var(--bg-primary);
+    border-radius: 3px;
+    overflow: hidden;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  .confidence-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+  }
+
+  .log-container {
+    background: var(--bg-primary);
+    border-radius: 6px;
+    padding: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .log-entry {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .log-entry:last-child {
+    border-bottom: none;
+  }
+  .log-entry.info {
+    color: var(--text-secondary);
+  }
+  .log-entry.success {
+    color: #00ff88;
+  }
+  .log-entry.error {
+    color: #ff4444;
+  }
+
+  .charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  .chart-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .chart-card h4 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: var(--text-secondary);
+    font-weight: 400;
+  }
+  .chart-card canvas {
+    max-height: 200px;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  }
+  .modal-content {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 24px;
+    cursor: pointer;
+  }
+
+  .toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .toast {
+    background: var(--bg-card);
+    padding: 12px 20px;
+    border-radius: 8px;
+    border-left: 4px solid var(--accent);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    animation: slideIn 0.3s ease;
+  }
+  .toast-success {
+    border-left-color: #00c853;
+  }
+  .toast-error {
+    border-left-color: #ff1744;
+  }
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-secondary);
+  }
+
+  @media (max-width: 768px) {
+    .stats-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .charts-grid {
+      grid-template-columns: 1fr;
+    }
+    .config-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  // ====================================================================
+  // GLOBAL STATE
+  // ====================================================================
+  let discoveredDevices = [];
+  let scanInProgress = false;
+  let pollInterval = null;
+  let currentJobId = null;
+  let scanStartTime = null;
+
+  // ====================================================================
+  // TOAST NOTIFICATIONS
+  // ====================================================================
+  function showToast(title, message, type = "info", duration = 5000) {
+    const container = document.getElementById("toastContainer");
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `<div class="toast-title">${title}</div><div class="toast-message">${message}</div>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.remove();
+    }, duration);
+  }
+
+  // ====================================================================
+  // ADD LOG ENTRY
+  // ====================================================================
+  function addLog(type, message) {
+    const container = document.getElementById("scanLog");
+    const entry = document.createElement("div");
+    entry.className = `log-entry ${type}`;
+    entry.textContent = message;
+    container.appendChild(entry);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // ====================================================================
+  // LOAD CURRENT DEVICES (for stats)
+  // ====================================================================
+  function loadCurrentDevices() {
+    fetch("/api/devices")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          document.getElementById("statTotalDevices").textContent =
+            data.devices.length;
+          // Additional stats from overview
+          fetch("/api/statistics/overview")
+            .then((r) => r.json())
+            .then((stats) => {
+              if (stats.success) {
+                document.getElementById("statCriticalVulns").textContent =
+                  stats.statistics.critical_vulnerabilities || 0;
+                document.getElementById("statAvgRisk").textContent =
+                  stats.statistics.average_risk_score || 0;
+                const risks = stats.statistics.risk_distribution || {};
+                const high = (risks.CRITICAL || 0) + (risks.HIGH || 0);
+                document.getElementById("statHighRisk").textContent = high;
+              }
+            })
+            .catch((err) => console.error("Stats overview error:", err));
+        }
+      })
+      .catch((err) => console.error("Load devices error:", err));
+  }
+
+  // ====================================================================
+  // START SCAN (background job)
+  // ====================================================================
+  function startRealScan() {
+    if (scanInProgress) {
+      showToast("Info", "Scan already in progress", "info");
+      return;
+    }
+    const target = document.getElementById("targetNetwork").value.trim();
+    if (!target) {
+      showToast("Error", "Target network is required", "error");
+      return;
+    }
+    if (!/^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/.test(target)) {
+      showToast("Error", "Invalid CIDR format (e.g., 192.168.1.0/24)", "error");
+      return;
+    }
+
+    scanInProgress = true;
+    currentJobId = null;
+    document.getElementById("scanStatus").style.display = "block";
+    document.getElementById("scanProgress").style.width = "0%";
+    document.getElementById("scanStatusText").textContent = "0%";
+    document.getElementById("scanDetails").textContent = "Starting scan...";
+    document.getElementById("scanTimer").textContent = "";
+    document.getElementById("exportCsvBtn").disabled = true;
+    document.getElementById("exportPdfBtn").style.display = "none";
+
+    const btn = document.querySelector(".btn-success");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
+
+    addLog("info", "🚀 Initiating background scan of " + target);
+
+    // Call API
+    fetch("/api/scan/real", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target: target }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then((data) => {
+        if (data.success && data.job_id) {
+          currentJobId = data.job_id;
+          document.getElementById("currentJobId").value = currentJobId;
+          sessionStorage.setItem("scanJobId", currentJobId);
+          scanStartTime = Date.now();
+          addLog(
+            "info",
+            `<i class="fas fa-clipboard-list"></i> Scan job created (ID: ${currentJobId}). Polling for progress...`,
+          );
+          // Start polling
+          pollScanStatus(currentJobId);
+        } else {
+          throw new Error(data.error || "Failed to start scan");
+        }
+      })
+      .catch((err) => {
+        scanInProgress = false;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-wifi"></i> Start Scan';
+        document.getElementById("scanStatusText").textContent = "Error";
+        document.getElementById("scanDetails").textContent = err.message;
+        addLog("error", "Error: " + err.message);
+        showToast("Error", "Scan failed: " + err.message, "error");
+      });
+  }
+
+  // ====================================================================
+  // POLL SCAN STATUS
+  // ====================================================================
+  function pollScanStatus(jobId) {
+    if (pollInterval) clearInterval(pollInterval);
+
+    pollInterval = setInterval(() => {
+      fetch(`/api/scan/status/${jobId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (!data.success) {
+            clearInterval(pollInterval);
+            scanInProgress = false;
+            showToast("Error", data.error || "Status check failed", "error");
+            resetScanButton();
+            return;
+          }
+          const job = data.job;
+          // Update progress
+          const progress = job.progress || 0;
+          document.getElementById("scanProgress").style.width = progress + "%";
+          document.getElementById("scanStatusText").textContent =
+            progress + "%";
+
+          // Update details and timer
+          const elapsed = Math.floor((Date.now() - scanStartTime) / 1000);
+          document.getElementById("scanTimer").textContent = `⏱️ ${elapsed}s`;
+          document.getElementById("scanDetails").textContent =
+            `Status: ${job.status} | ${job.status === "running" ? "Scanning..." : job.status}`;
+
+          // Check for completion or failure
+          if (job.status === "completed") {
+            clearInterval(pollInterval);
+            scanInProgress = false;
+            sessionStorage.removeItem("scanJobId");
+            document.getElementById("scanProgress").style.width = "100%";
+            document.getElementById("scanStatusText").textContent = "Complete!";
+            const duration = job.duration || elapsed;
+            document.getElementById("scanTimer").textContent =
+              `⏱️ ${duration.toFixed(1)}s`;
+            document.getElementById("scanDetails").textContent =
+              `Found ${job.result ? job.result.length : 0} devices in ${duration.toFixed(1)}s`;
+
+            // Store and display results
+            discoveredDevices = job.result || [];
+            displaySourceBreakdown(discoveredDevices);
+            displayDiscoveredDevices(discoveredDevices);
+            addLog(
+              "success",
+              `Scan completed. Found ${discoveredDevices.length} devices in ${duration.toFixed(1)}s.`,
+            );
+
+            // Enable CSV export, show PDF export
+            document.getElementById("exportCsvBtn").disabled = false;
+            document.getElementById("exportPdfBtn").style.display =
+              "inline-block";
+
+            // Refresh stats, history, charts
+            loadCurrentDevices();
+            loadScanHistory();
+            loadCharts();
+            showToast(
+              "Success",
+              `Scan complete: ${discoveredDevices.length} devices found`,
+              "success",
+            );
+            resetScanButton();
+          } else if (job.status === "failed") {
+            clearInterval(pollInterval);
+            scanInProgress = false;
+            sessionStorage.removeItem("scanJobId");
+            document.getElementById("scanDetails").textContent = "Scan failed";
+            addLog("error", "Scan failed: " + (job.error || "Unknown error"));
+            showToast(
+              "Error",
+              "Scan failed: " + (job.error || "Unknown"),
+              "error",
+            );
+            resetScanButton();
+          }
+        })
+        .catch((err) => {
+          clearInterval(pollInterval);
+          scanInProgress = false;
+          console.error("Polling error:", err);
+          showToast("Error", "Status polling error", "error");
+          resetScanButton();
+        });
+    }, 1500);
+  }
+
+  function resetScanButton() {
+    const btn = document.querySelector(".btn-success");
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-wifi"></i> Start Scan';
+  }
+
+  // ====================================================================
+  // DISPLAY SOURCE BREAKDOWN
+  // ====================================================================
+  function displaySourceBreakdown(devices) {
+    const container = document.getElementById("sourceBreakdownContainer");
+    if (!devices || devices.length === 0) {
+      container.innerHTML =
+        '<div class="empty-state">No devices to break down</div>';
+      return;
+    }
+    const groups = { nmap: [], mdns: [], windows: [], other: [] };
+    devices.forEach((dev) => {
+      let sources = dev.source || [];
+      if (!Array.isArray(sources)) sources = [sources];
+      const primary = sources.length > 0 ? sources[0].toLowerCase() : "other";
+      const ip = dev.ip_address || dev.ip || "Unknown";
+      if (primary === "nmap") groups.nmap.push(ip);
+      else if (primary === "mdns") groups.mdns.push(ip);
+      else if (primary === "windows") groups.windows.push(ip);
+      else groups.other.push(ip);
+    });
+
+    const sourceMap = {
+      nmap: {
+        label: "NMAP",
+        cls: "nmap",
+        icon: '<i class="fas fa-network-wired"></i>',
+      },
+      mdns: { label: "mDNS", cls: "mdns", icon: "📡" },
+      windows: { label: "Windows Discovery", cls: "windows", icon: "🪟" },
+      other: { label: "Other", cls: "other", icon: "🔹" },
+    };
+
+    let html = "";
+    for (const [key, ips] of Object.entries(groups)) {
+      const info = sourceMap[key] || sourceMap.other;
+      html += `
+      <div class="source-group ${info.cls}">
+        <div class="source-group-title">
+          <span>${info.icon} ${info.label}</span>
+          <span class="count">${ips.length}</span>
+        </div>
+        <div class="source-group-ips">
+          ${ips.length > 0 ? ips.map((ip) => `<span class="ip">${ip}</span>`).join("") : "None"}
+        </div>
+      </div>
+    `;
+    }
+    container.innerHTML = html;
+  }
+
+  // ====================================================================
+  // DISPLAY DISCOVERED DEVICES TABLE
+  // ====================================================================
+  function displayDiscoveredDevices(devices) {
+    const tbody = document.getElementById("discoveredDevicesBody");
+    if (!devices || devices.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" class="empty-state">No devices discovered</td></tr>`;
+      return;
+    }
+    let html = "";
+    devices.forEach((dev, idx) => {
+      const ports = dev.open_ports || [];
+      const confidence = dev.confidence || 0;
+      const confPct = (Math.min(confidence, 1) * 100).toFixed(0);
+      const sources = dev.source || ["nmap"];
+      if (!Array.isArray(sources)) sources = [sources];
+      const sourceHtml = sources
+        .map(
+          (s) =>
+            `<span class="source-badge source-${s.toLowerCase()}">${s}</span>`,
+        )
+        .join("");
+
+      html += `
+      <tr>
+        <td><strong>${dev.ip_address || dev.ip || "Unknown"}</strong></td>
+        <td>${dev.hostname || "-"}</td>
+        <td style="font-family:monospace;">${dev.mac_address || dev.mac || "N/A"}</td>
+        <td>${dev.brand || "Unknown"}</td>
+        <td><span class="device-type-badge">${dev.device_type || "Unknown"}</span></td>
+        <td>${dev.os || "Unknown"}</td>
+        <td>${ports.length > 0 ? ports.length + " ports" : "None"}</td>
+        <td>
+          <div class="confidence-bar"><div class="confidence-fill" style="width:${confPct}%;"></div></div>
+          ${confPct}%
+        </td>
+        <td>${sourceHtml}</td>
+        <td><button class="btn btn-primary btn-sm" onclick="viewDiscoveredDevice(${idx})">View</button></td>
+      </tr>
+    `;
+    });
+    tbody.innerHTML = html;
+  }
+
+  // ====================================================================
+  // VIEW DISCOVERED DEVICE (modal)
+  // ====================================================================
+  function viewDiscoveredDevice(index) {
+    const dev = discoveredDevices[index];
+    if (!dev) return;
+    document.getElementById("modalDeviceTitle").textContent =
+      `${dev.ip_address || dev.ip} - ${dev.device_type || "Unknown"}`;
+    let html = `
+    <div class="device-detail-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+      <div class="detail-item"><span class="detail-label" style="color:var(--text-secondary);font-size:12px;">IP</span><span class="detail-value">${dev.ip_address || dev.ip}</span></div>
+      <div class="detail-item"><span class="detail-label" style="color:var(--text-secondary);font-size:12px;">MAC</span><span class="detail-value" style="font-family:monospace;">${dev.mac_address || dev.mac || "N/A"}</span></div>
+      <div class="detail-item"><span class="detail-label" style="color:var(--text-secondary);font-size:12px;">Hostname</span><span class="detail-value">${dev.hostname || "-"}</span></div>
+      <div class="detail-item"><span class="detail-label" style="color:var(--text-secondary);font-size:12px;">Brand</span><span class="detail-value">${dev.brand || "Unknown"}</span></div>
+      <div class="detail-item"><span class="detail-label" style="color:var(--text-secondary);font-size:12px;">OS</span><span class="detail-value">${dev.os || "Unknown"}</span></div>
+      <div class="detail-item"><span class="detail-label" style="color:var(--text-secondary);font-size:12px;">Confidence</span><span class="detail-value">${(Math.min(dev.confidence || 0, 1) * 100).toFixed(0)}%</span></div>
+      <div class="detail-item" style="grid-column: span 2;">
+        <span class="detail-label" style="color:var(--text-secondary);font-size:12px;">Open Ports</span>
+        <span class="detail-value">${(dev.open_ports || []).length > 0 ? dev.open_ports.join(", ") : "None"}</span>
+      </div>
+    </div>
+  `;
+    document.getElementById("modalDeviceContent").innerHTML = html;
+    document.getElementById("deviceDetailModal").style.display = "flex";
+  }
+
+  function closeDeviceModal() {
+    document.getElementById("deviceDetailModal").style.display = "none";
+  }
+  document
+    .getElementById("deviceDetailModal")
+    .addEventListener("click", function (e) {
+      if (e.target === this) closeDeviceModal();
+    });
+
+  // ====================================================================
+  // SCAN HISTORY
+  // ====================================================================
+  function loadScanHistory() {
+    fetch("/api/scan/history")
+      .then((res) => res.json())
+      .then((data) => {
+        const tbody = document.getElementById("historyBody");
+        if (!data.success || !data.history || data.history.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No scan history</td></tr>`;
+          return;
+        }
+        let html = "";
+        data.history.forEach((row) => {
+          html += `
+          <tr>
+            <td>${new Date(row.scan_time).toLocaleString()}</td>
+            <td>${row.target}</td>
+            <td>${row.total_devices}</td>
+            <td>${row.nmap_count}</td>
+            <td>${row.mdns_count}</td>
+            <td>${row.windows_count}</td>
+            <td>${row.other_count}</td>
+            <td>${row.duration ? row.duration.toFixed(1) : "-"}</td>
+          </tr>
+        `;
+        });
+        tbody.innerHTML = html;
+      })
+      .catch((err) => console.error("Load history error:", err));
+  }
+
+  // ====================================================================
+  // CHARTS
+  // ====================================================================
+  let charts = {};
+
+  function loadCharts() {
+    fetch("/api/statistics/advanced")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.success) return;
+        // Device Types (pie)
+        const typeLabels = Object.keys(data.device_types);
+        const typeValues = Object.values(data.device_types);
+        if (typeLabels.length) {
+          if (charts.deviceType) charts.deviceType.destroy();
+          const ctx = document
+            .getElementById("deviceTypeChart")
+            .getContext("2d");
+          charts.deviceType = new Chart(ctx, {
+            type: "pie",
+            data: {
+              labels: typeLabels,
+              datasets: [
+                {
+                  data: typeValues,
+                  backgroundColor: [
+                    "#4a9eff",
+                    "#6c5ce7",
+                    "#00c853",
+                    "#ff8800",
+                    "#ff4444",
+                    "#8899aa",
+                  ],
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                legend: { position: "bottom", labels: { color: "#e8edf5" } },
+              },
+            },
+          });
+        }
+        // OS
+        const osLabels = Object.keys(data.os_distribution);
+        const osValues = Object.values(data.os_distribution);
+        if (osLabels.length) {
+          if (charts.os) charts.os.destroy();
+          const ctx = document.getElementById("osChart").getContext("2d");
+          charts.os = new Chart(ctx, {
+            type: "doughnut",
+            data: {
+              labels: osLabels,
+              datasets: [
+                {
+                  data: osValues,
+                  backgroundColor: [
+                    "#00d4ff",
+                    "#ff8800",
+                    "#00ff88",
+                    "#4a9eff",
+                    "#ff4444",
+                  ],
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                legend: { position: "bottom", labels: { color: "#e8edf5" } },
+              },
+            },
+          });
+        }
+        // Risk levels
+        const riskLabels = Object.keys(data.risk_levels);
+        const riskValues = Object.values(data.risk_levels);
+        if (riskLabels.length) {
+          if (charts.risk) charts.risk.destroy();
+          const ctx = document.getElementById("riskChart").getContext("2d");
+          charts.risk = new Chart(ctx, {
+            type: "bar",
+            data: {
+              labels: riskLabels,
+              datasets: [
+                {
+                  label: "Devices",
+                  data: riskValues,
+                  backgroundColor: [
+                    "#ff4444",
+                    "#ff8800",
+                    "#ffcc00",
+                    "#00ff88",
+                    "#8899aa",
+                  ],
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              scales: {
+                y: { beginAtZero: true, ticks: { color: "#e8edf5" } },
+                x: { ticks: { color: "#e8edf5" } },
+              },
+            },
+          });
+        }
+        // Trend
+        if (data.trend_dates && data.trend_dates.length) {
+          if (charts.trend) charts.trend.destroy();
+          const ctx = document.getElementById("trendChart").getContext("2d");
+          charts.trend = new Chart(ctx, {
+            type: "line",
+            data: {
+              labels: data.trend_dates,
+              datasets: [
+                {
+                  label: "CRITICAL",
+                  data: data.trend_critical,
+                  borderColor: "#ff4444",
+                  fill: false,
+                },
+                {
+                  label: "HIGH",
+                  data: data.trend_high,
+                  borderColor: "#ff8800",
+                  fill: false,
+                },
+                {
+                  label: "MEDIUM",
+                  data: data.trend_medium,
+                  borderColor: "#ffcc00",
+                  fill: false,
+                },
+                {
+                  label: "LOW",
+                  data: data.trend_low,
+                  borderColor: "#00ff88",
+                  fill: false,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              scales: {
+                y: { beginAtZero: true, ticks: { color: "#e8edf5" } },
+                x: { ticks: { color: "#e8edf5" } },
+              },
+              plugins: { legend: { labels: { color: "#e8edf5" } } },
+            },
+          });
+        }
+      })
+      .catch((err) => console.error("Load charts error:", err));
+  }
+
+  // ====================================================================
+  // EXPORT CSV
+  // ====================================================================
+  function exportResults() {
+    if (!discoveredDevices || discoveredDevices.length === 0) {
+      showToast("Info", "No devices to export", "info");
+      return;
+    }
+    let csv = "IP,Hostname,MAC,Brand,DeviceType,OS,Ports,Source\n";
+    discoveredDevices.forEach((d) => {
+      const ports = (d.open_ports || []).join(";");
+      const sources = (d.source || ["nmap"]).join(";");
+      csv += `${d.ip_address || d.ip},${d.hostname || ""},${d.mac_address || d.mac || ""},${d.brand || ""},${d.device_type || ""},${d.os || ""},"${ports}","${sources}"\n`;
+    });
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `scan_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ====================================================================
+  // EXPORT PDF
+  // ====================================================================
+  function exportPdf() {
+    const jobId = document.getElementById("currentJobId").value;
+    if (!jobId) {
+      showToast("Error", "No scan job found", "error");
+      return;
+    }
+    window.open(`/api/scan/export/${jobId}`, "_blank");
+  }
+
+  // ====================================================================
+  // TAB SWITCHING
+  // ====================================================================
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", function () {
+      document
+        .querySelectorAll(".tab-btn")
+        .forEach((b) => b.classList.remove("active"));
+      this.classList.add("active");
+      const tabId = this.dataset.tab;
+      document
+        .querySelectorAll(".tab-content")
+        .forEach((el) => el.classList.remove("active"));
+      document.getElementById("tab-" + tabId).classList.add("active");
+      if (tabId === "charts") loadCharts();
+      if (tabId === "history") loadScanHistory();
+    });
+  });
+
+  // ====================================================================
+  // INIT – Resume pending scan if any
+  // ====================================================================
+  document.addEventListener("DOMContentLoaded", function () {
+    loadCurrentDevices();
+    loadScanHistory();
+    // Check for a pending scan job in sessionStorage
+    const savedJobId = sessionStorage.getItem("scanJobId");
+    if (savedJobId) {
+      // Verify if it's still running
+      fetch(`/api/scan/status/${savedJobId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (
+            data.success &&
+            data.job &&
+            data.job.status !== "completed" &&
+            data.job.status !== "failed"
+          ) {
+            // Resume polling
+            currentJobId = savedJobId;
+            document.getElementById("currentJobId").value = savedJobId;
+            scanStartTime = Date.now() - (data.job.progress / 100) * 60 * 1000; // rough estimate
+            document.getElementById("scanStatus").style.display = "block";
+            document.getElementById("scanProgress").style.width =
+              data.job.progress + "%";
+            document.getElementById("scanStatusText").textContent =
+              data.job.progress + "%";
+            document.getElementById("scanDetails").textContent =
+              `Status: ${data.job.status} (resumed)`;
+            scanInProgress = true;
+            const btn = document.querySelector(".btn-success");
+            btn.disabled = true;
+            btn.innerHTML =
+              '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+            pollScanStatus(savedJobId);
+          } else {
+            sessionStorage.removeItem("scanJobId");
+          }
+        })
+        .catch(() => {});
+    }
+  });
+</script>
+{% endblock %}

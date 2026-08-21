@@ -1,0 +1,352 @@
+{% extends "base.html" %} {% block content %}
+<div class="page-header">
+  <h1><i class="fas fa-bug"></i> CVE Details</h1>
+  <div class="header-actions">
+    <a href="{{ url_for('devices') }}" class="btn btn-secondary btn-sm">
+      ← Back to Devices
+    </a>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px">
+  <!-- ========== MAIN CVE INFO ========== -->
+  <div
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+    "
+  >
+    <!-- Header: CVE ID, Severity, CVSS -->
+    <div
+      style="
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        flex-wrap: wrap;
+      "
+    >
+      <div>
+        <h2 style="color: var(--accent); margin-bottom: 5px">
+          {{ cve.cve_id }}
+        </h2>
+        <div
+          style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px"
+        >
+          <span class="risk-badge risk-{{ cve.severity }}"
+            >{{ cve.severity }}</span
+          >
+          <span
+            style="
+              background: var(--bg-primary);
+              padding: 4px 12px;
+              border-radius: 10px;
+              color: var(--text-secondary);
+              font-size: 13px;
+            "
+          >
+            CVSS Score: {{ cve.cvss_score }}
+          </span>
+          <span
+            style="
+              background: var(--bg-primary);
+              padding: 4px 12px;
+              border-radius: 10px;
+              color: var(--text-secondary);
+              font-size: 13px;
+            "
+          >
+            Vector: {{ cve.cvss_vector or 'N/A' }}
+          </span>
+        </div>
+      </div>
+      {% if threat_intel %}
+      <div style="display: flex; gap: 10px; flex-wrap: wrap">
+        {% if threat_intel.kev_status %}
+        <span
+          style="
+            background: var(--critical);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 10px;
+            font-size: 13px;
+          "
+          >🚨 CISA KEV</span
+        >
+        {% endif %} {% if threat_intel.exploit_count %}
+        <span
+          style="
+            background: var(--high);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 10px;
+            font-size: 13px;
+          "
+        >
+          💣 {{ threat_intel.exploit_count }} Exploits
+        </span>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Description -->
+    <div style="margin-top: 15px">
+      <h4 style="color: var(--accent); margin-bottom: 8px">📝 Description</h4>
+      <p style="color: var(--text-secondary); line-height: 1.6">
+        {{ cve.description }}
+      </p>
+    </div>
+
+    <!-- Published & Last Modified -->
+    <div
+      style="
+        margin-top: 15px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      "
+    >
+      <div>
+        <div style="font-size: 12px; color: var(--text-secondary)">
+          Published
+        </div>
+        <div style="color: var(--text-primary)">
+          {{ cve.published_date[:10] if cve.published_date else 'N/A' }}
+        </div>
+      </div>
+      <div>
+        <div style="font-size: 12px; color: var(--text-secondary)">
+          Last Modified
+        </div>
+        <div style="color: var(--text-primary)">
+          {{ cve.last_modified[:10] if cve.last_modified else 'N/A' }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Threat Intelligence -->
+    {% if threat_intel %}
+    <div
+      style="
+        margin-top: 20px;
+        border-top: 1px solid var(--border-color);
+        padding-top: 15px;
+      "
+    >
+      <h4 style="color: var(--accent); margin-bottom: 8px">
+        <i class="fas fa-shield-virus"></i> Threat Intelligence
+      </h4>
+      <div
+        style="
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 10px;
+        "
+      >
+        <div
+          style="
+            background: var(--bg-primary);
+            padding: 10px;
+            border-radius: 6px;
+          "
+        >
+          <div style="font-size: 11px; color: var(--text-secondary)">
+            EPSS Score
+          </div>
+          <div style="font-weight: bold; color: var(--accent)">
+            {{ "%.4f"|format(threat_intel.epss_score) }}
+          </div>
+        </div>
+        <div
+          style="
+            background: var(--bg-primary);
+            padding: 10px;
+            border-radius: 6px;
+          "
+        >
+          <div style="font-size: 11px; color: var(--text-secondary)">
+            EPSS Percentile
+          </div>
+          <div style="font-weight: bold; color: var(--accent)">
+            {{ "%.1f"|format(threat_intel.epss_percentile) }}%
+          </div>
+        </div>
+        <div
+          style="
+            background: var(--bg-primary);
+            padding: 10px;
+            border-radius: 6px;
+          "
+        >
+          <div style="font-size: 11px; color: var(--text-secondary)">
+            Risk Score
+          </div>
+          <div
+            style="font-weight: bold; color: {{ 'var(--critical)' if threat_intel.risk_score >= 70 else 'var(--high)' if threat_intel.risk_score >= 40 else 'var(--accent2)' }};"
+          >
+            {{ threat_intel.risk_score }}
+          </div>
+        </div>
+        <div
+          style="
+            background: var(--bg-primary);
+            padding: 10px;
+            border-radius: 6px;
+          "
+        >
+          <div style="font-size: 11px; color: var(--text-secondary)">
+            Priority
+          </div>
+          <div
+            style="font-weight: bold; color: {{ 'var(--critical)' if threat_intel.priority == 'IMMEDIATE' else 'var(--high)' if threat_intel.priority == 'HIGH' else 'var(--accent2)' }};"
+          >
+            {{ threat_intel.priority }}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- References (parsed list from route) -->
+    {% if cve.references %}
+    <div
+      style="
+        margin-top: 20px;
+        border-top: 1px solid var(--border-color);
+        padding-top: 15px;
+      "
+    >
+      <h4 style="color: var(--accent); margin-bottom: 8px">🔗 References</h4>
+      <div style="font-size: 13px">
+        {% for ref in cve.references %}
+        <div style="padding: 4px 0">
+          <a
+            href="{{ ref }}"
+            target="_blank"
+            style="color: var(--accent); word-break: break-all"
+            >{{ ref }}</a
+          >
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ========== SIDEBAR: AFFECTED DEVICES ========== -->
+  <div>
+    <!-- Affected Devices -->
+    <div
+      style="
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 20px;
+      "
+    >
+      <h4 style="color: var(--accent); margin-bottom: 15px">
+        <i class="fas fa-mobile-screen-button"></i> Affected Devices
+      </h4>
+      {% if affected_devices %}
+      <div style="max-height: 400px; overflow-y: auto">
+        {% for device in affected_devices %}
+        <div
+          style="
+            padding: 10px;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--accent);
+          "
+        >
+          <div style="font-weight: bold; color: var(--text-primary)">
+            <a
+              href="{{ url_for('devices') }}?filter={{ device.ip_address }}"
+              style="color: var(--accent); text-decoration: none"
+            >
+              {{ device.ip_address }}
+            </a>
+          </div>
+          <div style="font-size: 12px; color: var(--text-secondary)">
+            {{ device.hostname or 'No hostname' }} • {{ device.device_type or
+            'Unknown' }} {% if device.service %} • Service: {{ device.service
+            }}{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p style="color: var(--text-secondary)">
+        No devices affected by this CVE.
+      </p>
+      {% endif %}
+    </div>
+
+    <!-- Quick Actions -->
+    <div
+      style="
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 20px;
+        margin-top: 15px;
+      "
+    >
+      <h4 style="color: var(--accent); margin-bottom: 10px">
+        ⚡ Quick Actions
+      </h4>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <button
+          onclick="window.location.href='https://nvd.nist.gov/vuln/detail/{{ cve.cve_id }}'"
+          class="btn btn-primary btn-sm"
+          style="width: 100%"
+        >
+          View on NVD
+        </button>
+        <button
+          onclick="window.location.href='https://www.cve.org/CVERecord?id={{ cve.cve_id }}'"
+          class="btn btn-secondary btn-sm"
+          style="width: 100%"
+        >
+          View on CVE.org
+        </button>
+        <button
+          onclick="window.location.href='{{ url_for('search_exploits', cve_id=cve.cve_id) }}'"
+          class="btn btn-info btn-sm"
+          style="width: 100%"
+        >
+          <i class="fas fa-magnifying-glass"></i> Search Exploits
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .risk-badge {
+    padding: 4px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: bold;
+    display: inline-block;
+  }
+  .risk-CRITICAL {
+    background: var(--critical);
+    color: white;
+  }
+  .risk-HIGH {
+    background: var(--high);
+    color: white;
+  }
+  .risk-MEDIUM {
+    background: var(--medium);
+    color: black;
+  }
+  .risk-LOW {
+    background: var(--accent2);
+    color: black;
+  }
+</style>
+{% endblock %}

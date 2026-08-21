@@ -1,0 +1,11 @@
+# Open Command Prompt as Administrator
+# Right-click -> Run as Administrator
+
+# Run the scanner
+python scanner.py
+
+# With verbose output
+python scanner.py -v
+
+# Scan specific network
+python scanner.py -t 192.168.1.0/24

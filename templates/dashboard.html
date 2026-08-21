@@ -1,0 +1,1129 @@
+{% extends "base.html" %} {% block content %}
+<div class="page-header">
+  <h1><i class="fas fa-chart-pie"></i> Dashboard</h1>
+  <div class="header-actions">
+    <span
+      id="dataFreshness"
+      style="font-size: 12px; color: var(--text-secondary); margin-right: 15px"
+    >
+      Last updated: <span id="lastUpdated">Never</span>
+      <span id="statusIndicator" class="status-badge" style="margin-left: 8px"
+        ><i class="fas fa-spinner fa-spin"></i> Loading...</span
+      >
+    </span>
+    <button class="btn btn-primary btn-sm" onclick="refreshData()">
+      <i class="fas fa-sync"></i> Refresh
+    </button>
+  </div>
+</div>
+
+<!-- Stats Cards -->
+<div
+  style="
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+  "
+>
+  <div
+    class="stat-card"
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      position: relative;
+    "
+  >
+    <div
+      class="stat-loader"
+      style="
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      "
+    >
+      <div class="spinner"></div>
+    </div>
+    <div
+      class="number"
+      id="totalDevices"
+      style="font-size: 32px; font-weight: bold; color: var(--accent)"
+    >
+      -
+    </div>
+    <div class="label" style="color: var(--text-secondary); font-size: 14px">
+      Total Devices
+    </div>
+  </div>
+  <div
+    class="stat-card"
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      position: relative;
+    "
+  >
+    <div
+      class="stat-loader"
+      style="
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      "
+    >
+      <div class="spinner"></div>
+    </div>
+    <div
+      class="number"
+      id="criticalVulns"
+      style="font-size: 32px; font-weight: bold; color: var(--critical)"
+    >
+      -
+    </div>
+    <div class="label" style="color: var(--text-secondary); font-size: 14px">
+      Critical Vulnerabilities
+    </div>
+  </div>
+  <div
+    class="stat-card"
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      position: relative;
+    "
+  >
+    <div
+      class="stat-loader"
+      style="
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      "
+    >
+      <div class="spinner"></div>
+    </div>
+    <div
+      class="number"
+      id="avgRisk"
+      style="font-size: 32px; font-weight: bold; color: var(--high)"
+    >
+      -
+    </div>
+    <div class="label" style="color: var(--text-secondary); font-size: 14px">
+      Average Risk Score
+    </div>
+  </div>
+  <div
+    class="stat-card"
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      position: relative;
+    "
+  >
+    <div
+      class="stat-loader"
+      style="
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      "
+    >
+      <div class="spinner"></div>
+    </div>
+    <div
+      class="number"
+      id="totalVulns"
+      style="font-size: 32px; font-weight: bold; color: var(--medium)"
+    >
+      -
+    </div>
+    <div class="label" style="color: var(--text-secondary); font-size: 14px">
+      Total Vulnerabilities
+    </div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div
+  style="
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+  "
+>
+  <div
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      position: relative;
+    "
+  >
+    <div
+      class="chart-loader"
+      style="
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+      "
+    >
+      <div class="spinner"></div>
+    </div>
+    <h3 style="margin-bottom: 15px; font-size: 16px">Devices by Type</h3>
+    <canvas id="deviceTypeChart" height="250"></canvas>
+  </div>
+  <div
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      position: relative;
+    "
+  >
+    <div
+      class="chart-loader"
+      style="
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+      "
+    >
+      <div class="spinner"></div>
+    </div>
+    <h3 style="margin-bottom: 15px; font-size: 16px">Risk Distribution</h3>
+    <canvas id="riskChart" height="250"></canvas>
+  </div>
+</div>
+
+<!-- Risk Timeline -->
+<div
+  style="
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    position: relative;
+  "
+>
+  <div
+    class="chart-loader"
+    style="
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+    "
+  >
+    <div class="spinner"></div>
+  </div>
+  <h3 style="margin-bottom: 15px; font-size: 16px">
+    Vulnerability Timeline (Last 7 Days)
+  </h3>
+  <canvas id="timelineChart" height="200"></canvas>
+</div>
+
+<!-- Top CVEs -->
+<div
+  style="
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    position: relative;
+  "
+>
+  <div
+    class="table-loader"
+    style="
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+    "
+  >
+    <div class="spinner"></div>
+  </div>
+  <h3 style="margin-bottom: 15px; font-size: 16px">
+    <i class="fas fa-triangle-exclamation"></i> Top CVEs by Severity
+  </h3>
+  <div id="topCvesList">
+    <div
+      style="text-align: center; color: var(--text-secondary); padding: 20px"
+    >
+      Loading...
+    </div>
+  </div>
+</div>
+
+<!-- ==================== ANOMALY DETECTION CARD ==================== -->
+<div
+  style="
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    position: relative;
+  "
+>
+  <div
+    class="table-loader"
+    style="
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+    "
+  >
+    <div class="spinner"></div>
+  </div>
+  <div
+    style="
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    "
+  >
+    <h3 style="font-size: 16px; margin: 0">🚨 Anomaly Detection</h3>
+    <div>
+      <button
+        class="btn btn-primary btn-sm"
+        onclick="trainAnomalyModel()"
+        style="margin-right: 8px"
+      >
+        <i class="fas fa-brain"></i> Train Model
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick="loadAnomalies()">
+        <i class="fas fa-sync-alt"></i> Refresh
+      </button>
+    </div>
+  </div>
+  <div id="anomalyList">
+    <div
+      style="text-align: center; color: var(--text-secondary); padding: 20px"
+    >
+      Loading anomalies...
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification Container -->
+<div
+  id="toastContainer"
+  style="
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  "
+></div>
+
+<style>
+  /* Spinner Animation */
+  .spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--border-color);
+    border-top: 4px solid var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Status Badges */
+  .status-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .status-fresh {
+    background: #00ff8822;
+    color: #00ff88;
+  }
+
+  .status-stale {
+    background: #ff880022;
+    color: #ff8800;
+  }
+
+  .status-error {
+    background: #ff444422;
+    color: #ff4444;
+  }
+
+  /* Toast Notifications */
+  .toast {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px 20px;
+    min-width: 300px;
+    max-width: 450px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    animation: slideIn 0.3s ease;
+  }
+
+  .toast-success {
+    border-left: 4px solid #00ff88;
+  }
+
+  .toast-error {
+    border-left: 4px solid #ff4444;
+  }
+
+  .toast-warning {
+    border-left: 4px solid #ff8800;
+  }
+
+  .toast-info {
+    border-left: 4px solid var(--accent);
+  }
+
+  .toast-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+
+  .toast-message {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .toast-close {
+    float: right;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0 0 0 10px;
+  }
+
+  .toast-close:hover {
+    color: var(--text-primary);
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideOut {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
+  .toast-hidden {
+    animation: slideOut 0.3s ease forwards;
+  }
+
+  /* Overlay for loading states */
+  .loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-secondary);
+    opacity: 0.7;
+    z-index: 5;
+    border-radius: 10px;
+  }
+
+  /* Retry button */
+  .retry-btn {
+    background: var(--accent);
+    color: var(--bg-primary);
+    border: none;
+    padding: 5px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-left: 10px;
+  }
+
+  .retry-btn:hover {
+    opacity: 0.8;
+  }
+
+  /* Severity badge for anomaly */
+  .anomaly-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .anomaly-high {
+    background: #ff444422;
+    color: #ff4444;
+  }
+  .anomaly-medium {
+    background: #ff880022;
+    color: #ff8800;
+  }
+  .anomaly-low {
+    background: #ffcc0022;
+    color: #ffcc00;
+  }
+  .anomaly-none {
+    background: #00ff8822;
+    color: #00ff88;
+  }
+</style>
+
+<script>
+  let deviceTypeChart = null;
+  let riskChart = null;
+  let timelineChart = null;
+
+  // Toast management
+  function showToast(title, message, type = "info", duration = 5000) {
+    const container = document.getElementById("toastContainer");
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+      <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+      <div class="toast-title">${title}</div>
+      <div class="toast-message">${message}</div>
+    `;
+    container.appendChild(toast);
+
+    if (duration > 0) {
+      setTimeout(() => {
+        toast.classList.add("toast-hidden");
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+  }
+
+  // Error handler with retry
+  async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return await response.json();
+      } catch (error) {
+        if (i === retries - 1) {
+          throw error;
+        }
+        // Exponential backoff
+        await new Promise((resolve) =>
+          setTimeout(resolve, delay * Math.pow(2, i)),
+        );
+        showToast(
+          "Retrying...",
+          `Attempt ${i + 2} of ${retries} for ${url}`,
+          "warning",
+          2000,
+        );
+      }
+    }
+  }
+
+  // Loading state management
+  function showLoading(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+      const loader =
+        element.closest(".stat-card")?.querySelector(".stat-loader") ||
+        element.closest("div")?.querySelector(".chart-loader") ||
+        element.closest("div")?.querySelector(".table-loader");
+      if (loader) {
+        loader.style.display = "block";
+        // Add overlay
+        const overlay = document.createElement("div");
+        overlay.className = "loading-overlay";
+        overlay.id = `overlay-${elementId}`;
+        element
+          .closest(".stat-card, .chart-container, .table-container")
+          ?.appendChild(overlay);
+      }
+    }
+  }
+
+  function hideLoading(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+      const loader =
+        element.closest(".stat-card")?.querySelector(".stat-loader") ||
+        element.closest("div")?.querySelector(".chart-loader") ||
+        element.closest("div")?.querySelector(".table-loader");
+      if (loader) {
+        loader.style.display = "none";
+      }
+      const overlay = document.getElementById(`overlay-${elementId}`);
+      if (overlay) {
+        overlay.remove();
+      }
+    }
+  }
+
+  // Update data freshness
+  function updateDataFreshness() {
+    const now = new Date();
+    document.getElementById("lastUpdated").textContent = now.toLocaleString();
+    const indicator = document.getElementById("statusIndicator");
+    indicator.innerHTML = '<i class="fas fa-circle-check"></i> Fresh';
+    indicator.className = "status-badge status-fresh";
+  }
+
+  function markDataStale() {
+    const indicator = document.getElementById("statusIndicator");
+    indicator.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Stale';
+    indicator.className = "status-badge status-stale";
+    showToast(
+      "Data Stale",
+      "Dashboard data may be outdated. Click refresh to update.",
+      "warning",
+      3000,
+    );
+  }
+
+  function markDataError() {
+    const indicator = document.getElementById("statusIndicator");
+    indicator.innerHTML = '<i class="fas fa-circle-xmark"></i> Error';
+    indicator.className = "status-badge status-error";
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    refreshData();
+    // Refresh every 30 seconds
+    const refreshInterval = setInterval(() => {
+      // Check if data is stale (> 2 minutes)
+      const lastUpdate = document.getElementById("lastUpdated").textContent;
+      if (lastUpdate !== "Never") {
+        const lastUpdateTime = new Date(lastUpdate).getTime();
+        if (Date.now() - lastUpdateTime > 120000) {
+          markDataStale();
+        }
+      }
+      refreshData();
+    }, 30000);
+  });
+
+  async function refreshData() {
+    try {
+      await loadStatistics();
+      await loadTopCVEs();
+      await loadTimeline();
+      await loadAnomalies(); // <-- ADDED: refresh anomaly list
+      updateDataFreshness();
+      showToast(
+        "Dashboard Updated",
+        "All data has been refreshed successfully",
+        "success",
+        2000,
+      );
+    } catch (error) {
+      markDataError();
+      showToast(
+        "Update Failed",
+        error.message || "Failed to refresh dashboard data",
+        "error",
+        5000,
+      );
+    }
+  }
+
+  async function loadStatistics() {
+    const statIds = ["totalDevices", "criticalVulns", "avgRisk", "totalVulns"];
+    statIds.forEach((id) => showLoading(id));
+
+    try {
+      const data = await fetchWithRetry("/api/statistics/overview");
+
+      if (data.success) {
+        const stats = data.statistics;
+        document.getElementById("totalDevices").textContent =
+          stats.total_devices || 0;
+        document.getElementById("criticalVulns").textContent =
+          stats.critical_vulnerabilities || 0;
+        document.getElementById("avgRisk").textContent =
+          stats.average_risk_score || "0.0";
+        document.getElementById("totalVulns").textContent =
+          stats.total_vulnerabilities || 0;
+
+        updateDeviceTypeChart(stats.devices_by_type || {});
+        updateRiskChart(stats.risk_distribution || {});
+      } else {
+        throw new Error("Invalid response from server");
+      }
+    } catch (error) {
+      showToast(
+        "Statistics Error",
+        `Failed to load statistics: ${error.message}`,
+        "error",
+        5000,
+      );
+      console.error("Error loading stats:", error);
+
+      // Show retry button in stats
+      statIds.forEach((id) => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.innerHTML = '<i class="fas fa-triangle-exclamation"></i>';
+          element.style.cursor = "pointer";
+          element.title = "Click to retry";
+          element.onclick = () => loadStatistics();
+        }
+      });
+    } finally {
+      statIds.forEach((id) => hideLoading(id));
+    }
+  }
+
+  function updateDeviceTypeChart(data) {
+    const labels = Object.keys(data);
+    const values = Object.values(data);
+
+    if (deviceTypeChart) {
+      deviceTypeChart.destroy();
+    }
+
+    const ctx = document.getElementById("deviceTypeChart").getContext("2d");
+    deviceTypeChart = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            data: values,
+            backgroundColor: [
+              "#00d4ff",
+              "#00ff88",
+              "#ff8800",
+              "#ff4444",
+              "#ffcc00",
+              "#8899aa",
+            ],
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: { color: "#e0e6ed" },
+          },
+        },
+      },
+    });
+  }
+
+  function updateRiskChart(data) {
+    const labels = Object.keys(data);
+    const values = Object.values(data);
+    const colors = {
+      CRITICAL: "#ff4444",
+      HIGH: "#ff8800",
+      MEDIUM: "#ffcc00",
+      LOW: "#00ff88",
+      NONE: "#8899aa",
+    };
+
+    if (riskChart) {
+      riskChart.destroy();
+    }
+
+    const ctx = document.getElementById("riskChart").getContext("2d");
+    riskChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            data: values,
+            backgroundColor: labels.map((l) => colors[l] || "#8899aa"),
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { color: "#8899aa" },
+          },
+          x: {
+            ticks: { color: "#e0e6ed" },
+          },
+        },
+      },
+    });
+  }
+
+  async function loadTimeline() {
+    showLoading("timelineChart");
+    try {
+      const data = await fetchWithRetry("/api/statistics/risk-timeline");
+      if (data.success && data.timeline && data.timeline.length > 0) {
+        updateTimelineChart(data.timeline);
+      } else {
+        throw new Error("No timeline data available");
+      }
+    } catch (error) {
+      showToast(
+        "Timeline Error",
+        `Failed to load timeline: ${error.message}`,
+        "error",
+        5000,
+      );
+      console.error("Error loading timeline:", error);
+    } finally {
+      hideLoading("timelineChart");
+    }
+  }
+
+  function updateTimelineChart(data) {
+    const labels = data.map((d) => d.date);
+    const critical = data.map((d) => d.critical || 0);
+    const high = data.map((d) => d.high || 0);
+    const medium = data.map((d) => d.medium || 0);
+    const low = data.map((d) => d.low || 0);
+
+    if (timelineChart) {
+      timelineChart.destroy();
+    }
+
+    const ctx = document.getElementById("timelineChart").getContext("2d");
+    timelineChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: "Critical",
+            data: critical,
+            borderColor: "#ff4444",
+            backgroundColor: "#ff444422",
+            fill: true,
+          },
+          {
+            label: "High",
+            data: high,
+            borderColor: "#ff8800",
+            backgroundColor: "#ff880022",
+            fill: true,
+          },
+          {
+            label: "Medium",
+            data: medium,
+            borderColor: "#ffcc00",
+            backgroundColor: "#ffcc0022",
+            fill: true,
+          },
+          {
+            label: "Low",
+            data: low,
+            borderColor: "#00ff88",
+            backgroundColor: "#00ff8822",
+            fill: true,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            labels: { color: "#e0e6ed" },
+          },
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { color: "#8899aa" },
+          },
+          x: {
+            ticks: { color: "#8899aa" },
+          },
+        },
+      },
+    });
+  }
+
+  async function loadTopCVEs() {
+    const container = document.getElementById("topCvesList");
+    showLoading("topCvesList");
+
+    try {
+      const data = await fetchWithRetry("/api/statistics/top-cves");
+
+      if (data.success && data.top_cves && data.top_cves.length > 0) {
+        let html = '<div style="overflow-x: auto;">';
+        html += '<table style="width: 100%; border-collapse: collapse;">';
+        html += `
+          <thead>
+            <tr style="color: var(--text-secondary); border-bottom: 1px solid var(--border-color);">
+              <th style="padding: 8px; text-align: left;">CVE ID</th>
+              <th style="padding: 8px; text-align: left;">Description</th>
+              <th style="padding: 8px; text-align: center;">CVSS</th>
+              <th style="padding: 8px; text-align: center;">Severity</th>
+              <th style="padding: 8px; text-align: center;">Affected</th>
+            </tr>
+          </thead>
+          <tbody>
+        `;
+
+        data.top_cves.forEach((cve) => {
+          const severityColor =
+            {
+              CRITICAL: "var(--critical)",
+              HIGH: "var(--high)",
+              MEDIUM: "var(--medium)",
+              LOW: "var(--low)",
+            }[cve.severity] || "var(--text-secondary)";
+
+          html += `
+            <tr style="border-bottom: 1px solid var(--border-color);">
+              <td style="padding: 8px; font-weight: bold; color: var(--accent);">${cve.cve_id}</td>
+              <td style="padding: 8px; font-size: 13px; color: var(--text-secondary);">
+                ${cve.description ? cve.description.substring(0, 80) + "..." : "-"}
+              </td>
+              <td style="padding: 8px; text-align: center;">${cve.cvss_score || "N/A"}</td>
+              <td style="padding: 8px; text-align: center;">
+                <span style="background: ${severityColor}22; color: ${severityColor}; padding: 2px 10px; border-radius: 10px; font-size: 11px;">
+                  ${cve.severity || "UNKNOWN"}
+                </span>
+              </td>
+              <td style="padding: 8px; text-align: center;">${cve.affected_devices}</td>
+            </tr>
+          `;
+        });
+
+        html += "</tbody></table></div>";
+        container.innerHTML = html;
+      } else {
+        container.innerHTML = `
+          <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
+            No vulnerabilities found
+            <br><br>
+            <button class="retry-btn" onclick="loadTopCVEs()"><i class="fas fa-rotate"></i> Retry</button>
+          </div>
+        `;
+      }
+    } catch (error) {
+      showToast(
+        "CVEs Error",
+        `Failed to load top CVEs: ${error.message}`,
+        "error",
+        5000,
+      );
+      container.innerHTML = `
+        <div style="text-align: center; color: var(--critical); padding: 20px;">
+          <i class="fas fa-triangle-exclamation"></i> Error loading CVEs
+          <br><br>
+          <button class="retry-btn" onclick="loadTopCVEs()"><i class="fas fa-rotate"></i> Retry</button>
+        </div>
+      `;
+      console.error("Error loading CVEs:", error);
+    } finally {
+      hideLoading("topCvesList");
+    }
+  }
+
+  // ==================== ANOMALY DETECTION FUNCTIONS ====================
+
+  async function loadAnomalies() {
+    const container = document.getElementById("anomalyList");
+    // Show loader
+    container.innerHTML = `
+      <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
+        <div class="spinner" style="width: 30px; height: 30px; margin: 0 auto;"></div>
+        <br>Loading anomalies...
+      </div>
+    `;
+
+    try {
+      const data = await fetchWithRetry("/api/anomalies");
+      if (data.success && data.anomalies && data.anomalies.length > 0) {
+        let html = '<div style="overflow-x: auto;">';
+        html += '<table style="width: 100%; border-collapse: collapse;">';
+        html += `
+          <thead>
+            <tr style="color: var(--text-secondary); border-bottom: 1px solid var(--border-color);">
+              <th style="padding: 8px; text-align: left;">IP Address</th>
+              <th style="padding: 8px; text-align: left;">Hostname</th>
+              <th style="padding: 8px; text-align: center;">Anomaly Score</th>
+              <th style="padding: 8px; text-align: center;">Status</th>
+              <th style="padding: 8px; text-align: center;">Risk Level</th>
+            </tr>
+          </thead>
+          <tbody>
+        `;
+
+        data.anomalies.forEach((a) => {
+          const scorePercent = (a.anomaly_score * 100).toFixed(1);
+          let scoreColor = "var(--text-secondary)";
+          let badgeClass = "anomaly-none";
+          if (a.anomaly_score > 0.7) {
+            scoreColor = "var(--critical)";
+            badgeClass = "anomaly-high";
+          } else if (a.anomaly_score > 0.4) {
+            scoreColor = "var(--high)";
+            badgeClass = "anomaly-medium";
+          } else if (a.anomaly_score > 0.15) {
+            scoreColor = "var(--medium)";
+            badgeClass = "anomaly-low";
+          }
+
+          const statusIcon =
+            a.label === "anomaly"
+              ? '<i class="fas fa-circle-xmark"></i>'
+              : '<i class="fas fa-circle-check"></i>';
+          const riskColor =
+            {
+              CRITICAL: "var(--critical)",
+              HIGH: "var(--high)",
+              MEDIUM: "var(--medium)",
+              LOW: "var(--low)",
+              NONE: "var(--text-secondary)",
+            }[a.risk_level] || "var(--text-secondary)";
+
+          html += `
+            <tr style="border-bottom: 1px solid var(--border-color);">
+              <td style="padding: 8px; font-weight: bold; color: var(--accent);">${a.ip}</td>
+              <td style="padding: 8px;">${a.hostname || "-"}</td>
+              <td style="padding: 8px; text-align: center; color: ${scoreColor}; font-weight: bold;">
+                ${scorePercent}%
+              </td>
+              <td style="padding: 8px; text-align: center;">
+                <span class="anomaly-badge ${badgeClass}">${statusIcon} ${a.label}</span>
+              </td>
+              <td style="padding: 8px; text-align: center;">
+                <span style="background: ${riskColor}22; color: ${riskColor}; padding: 2px 10px; border-radius: 10px; font-size: 11px;">
+                  ${a.risk_level || "NONE"}
+                </span>
+              </td>
+            </tr>
+          `;
+        });
+
+        html += "</tbody></table></div>";
+        container.innerHTML = html;
+      } else {
+        container.innerHTML = `
+          <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
+            <i class="fas fa-circle-check"></i> No anomalies detected. All devices appear normal.
+            <br><br>
+            <button class="retry-btn" onclick="loadAnomalies()"><i class="fas fa-rotate"></i> Refresh</button>
+          </div>
+        `;
+      }
+    } catch (error) {
+      showToast(
+        "Anomaly Error",
+        `Failed to load anomalies: ${error.message}`,
+        "error",
+        5000,
+      );
+      container.innerHTML = `
+        <div style="text-align: center; color: var(--critical); padding: 20px;">
+          <i class="fas fa-triangle-exclamation"></i> Error loading anomalies
+          <br><br>
+          <button class="retry-btn" onclick="loadAnomalies()"><i class="fas fa-rotate"></i> Retry</button>
+        </div>
+      `;
+      console.error("Error loading anomalies:", error);
+    }
+  }
+
+  async function trainAnomalyModel() {
+    showToast("Training", "Training anomaly detection model...", "info", 3000);
+    try {
+      const response = await fetch("/api/anomalies/train", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(
+          "Success",
+          "Anomaly model trained successfully!",
+          "success",
+          3000,
+        );
+        await loadAnomalies(); // refresh the list
+      } else {
+        throw new Error(data.error || "Training failed");
+      }
+    } catch (error) {
+      showToast("Training Error", error.message, "error", 5000);
+    }
+  }
+</script>
+{% endblock %}

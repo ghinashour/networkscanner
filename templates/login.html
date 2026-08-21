@@ -1,0 +1,278 @@
+{% extends "base.html" %} {% block content %}
+<link
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+  rel="stylesheet"
+/>
+
+<div class="login-wrapper">
+  <div class="login-card">
+    <!-- Brand -->
+    <div class="brand">
+      <div class="brand-icon"><i class="fas fa-shield-halved"></i></div>
+      <h1>Sentinel AI</h1>
+      <p class="tagline">Intelligent Network Security</p>
+    </div>
+
+    <!-- Login Form -->
+    <form method="POST" action="{{ url_for('login') }}" class="login-form">
+      {{ form.csrf_token if form else '' }}
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input
+          type="text"
+          id="username"
+          name="username"
+          placeholder="Enter your username"
+          required
+          autofocus
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="Enter your password"
+          required
+        />
+      </div>
+
+      <!-- reCAPTCHA -->
+      <div class="form-group captcha">
+        <div
+          class="g-recaptcha"
+          data-sitekey="{{ recaptcha_site_key or '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI' }}"
+        ></div>
+        <small
+          style="
+            color: var(--text-secondary);
+            font-size: 12px;
+            display: block;
+            margin-top: 8px;
+          "
+        >
+          This site is protected by reCAPTCHA and the Google
+          <a
+            href="https://policies.google.com/privacy"
+            target="_blank"
+            style="color: var(--accent)"
+            >Privacy Policy</a
+          >
+          and
+          <a
+            href="https://policies.google.com/terms"
+            target="_blank"
+            style="color: var(--accent)"
+            >Terms of Service</a
+          >
+          apply.
+        </small>
+      </div>
+
+      <button type="submit" class="btn-login">
+        <span>Sign In</span>
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      </button>
+    </form>
+
+    <div class="footer">
+      <p>&copy; 2026 Sentinel AI. All rights reserved.</p>
+    </div>
+  </div>
+</div>
+
+<!-- reCAPTCHA script -->
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
+<style>
+  :root {
+    --login-bg: #0b0e14;
+    --card-bg: #141a24;
+    --border: #2a3340;
+    --text: #e8edf5;
+    --text-muted: #8a94a6;
+    --accent: #4f8cff;
+    --accent-hover: #3a7ae8;
+  }
+
+  .login-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: var(--login-bg);
+    background-image:
+      radial-gradient(ellipse at 30% 20%, #1a2640 0%, transparent 60%),
+      radial-gradient(ellipse at 70% 80%, #1a2640 0%, transparent 60%);
+    padding: 20px;
+    font-family:
+      "Inter",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
+  }
+
+  .login-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 48px 40px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    transition: transform 0.2s ease;
+  }
+
+  .login-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .brand {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .brand-icon {
+    font-size: 48px;
+    line-height: 1;
+    margin-bottom: 8px;
+    filter: drop-shadow(0 0 20px rgba(79, 140, 255, 0.3));
+  }
+
+  .brand h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #4f8cff 0%, #7c6af0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+  }
+
+  .tagline {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 4px;
+    letter-spacing: 0.3px;
+  }
+
+  .login-form .form-group {
+    margin-bottom: 20px;
+  }
+
+  .login-form label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .login-form input {
+    width: 100%;
+    padding: 12px 16px;
+    background: #1e2735;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 15px;
+    transition:
+      border-color 0.2s,
+      box-shadow 0.2s;
+    outline: none;
+  }
+
+  .login-form input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.2);
+  }
+
+  .login-form input::placeholder {
+    color: #5a6a7e;
+  }
+
+  .captcha {
+    margin: 20px 0 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .captcha .g-recaptcha {
+    transform: scale(0.92);
+    transform-origin: center;
+  }
+
+  .btn-login {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition:
+      background 0.2s,
+      transform 0.1s;
+    font-family: inherit;
+  }
+
+  .btn-login:hover {
+    background: var(--accent-hover);
+  }
+
+  .btn-login:active {
+    transform: scale(0.98);
+  }
+
+  .footer {
+    margin-top: 28px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+  }
+
+  .footer a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    .login-card {
+      padding: 32px 24px;
+    }
+    .brand h1 {
+      font-size: 24px;
+    }
+    .captcha .g-recaptcha {
+      transform: scale(0.8);
+    }
+  }
+</style>
+{% endblock %}

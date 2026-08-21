@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Network Security Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      /* ===== CSS VARIABLES ===== */
+      :root {
+        --bg-primary: #060a12;
+        --bg-secondary: #0a1422;
+        --bg-card: #0d1b2a;
+        --text-primary: #e8f1f5;
+        --text-secondary: #8ba4b2;
+        --border-color: #1a3b58;
+        --accent: #20d7f5;
+        --accent2: #63f5b1;
+        --critical: #ff5576;
+        --high: #ff9b54;
+        --medium: #f5d267;
+        --low: #63f5b1;
+        --glow: 0 0 24px #20d7f526;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background:
+          radial-gradient(circle at 88% 4%, #12334b66 0, transparent 30%),
+          radial-gradient(circle at 12% 100%, #0a3a3b44 0, transparent 32%),
+          var(--bg-primary);
+        color: var(--text-primary);
+        min-height: 100vh;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.22;
+        background-image:
+          linear-gradient(#2b63801c 1px, transparent 1px),
+          linear-gradient(90deg, #2b63801c 1px, transparent 1px);
+        background-size: 46px 46px;
+        mask-image: linear-gradient(to bottom, black, transparent 82%);
+      }
+
+      /* ===== SIDEBAR ===== */
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 240px;
+        background: linear-gradient(180deg, #0b1929f2, #07101cf7);
+        border-right: 1px solid var(--border-color);
+        padding: 20px 0;
+        z-index: 1000;
+        transition:
+          transform 0.3s,
+          box-shadow 0.3s;
+        box-shadow: 14px 0 40px #00000030;
+      }
+
+      .sidebar .logo {
+        padding: 0 20px 20px;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 20px;
+      }
+
+      .sidebar .logo h2 {
+        color: var(--accent);
+        font-size: 20px;
+        letter-spacing: 0.04em;
+        text-shadow: 0 0 18px #20d7f566;
+      }
+
+      .sidebar .logo small {
+        color: var(--text-secondary);
+        font-size: 11px;
+        display: block;
+      }
+
+      .sidebar .nav-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 20px;
+        color: var(--text-secondary);
+        text-decoration: none;
+        transition: all 0.3s;
+        border-left: 3px solid transparent;
+      }
+
+      .sidebar .nav-item:hover,
+      .sidebar .nav-item.active {
+        background: linear-gradient(90deg, #12334b, #0d2132);
+        color: var(--accent);
+        border-left-color: var(--accent);
+        box-shadow: inset 0 0 18px #20d7f51a;
+      }
+
+      .sidebar .nav-item i {
+        width: 24px;
+        margin-right: 10px;
+      }
+
+      .sidebar .user-info {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 20px;
+        border-top: 1px solid var(--border-color);
+      }
+
+      .sidebar .user-info .name {
+        font-size: 14px;
+        font-weight: bold;
+      }
+
+      .sidebar .user-info .role {
+        font-size: 11px;
+        color: var(--text-secondary);
+      }
+
+      .sidebar .user-info .logout {
+        display: block;
+        margin-top: 8px;
+        color: var(--critical);
+        text-decoration: none;
+        font-size: 12px;
+      }
+
+      /* ===== MAIN CONTENT ===== */
+      .main-content {
+        margin-left: 240px;
+        padding: 20px 30px;
+        min-height: 100vh;
+        position: relative;
+        z-index: 1;
+      }
+
+      /* ===== FLASH MESSAGES ===== */
+      .flash-messages {
+        margin-bottom: 20px;
+      }
+
+      .flash-message {
+        padding: 12px 18px;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        border-left: 4px solid;
+      }
+
+      .flash-message.success {
+        background: #00ff8822;
+        border-color: var(--accent2);
+      }
+      .flash-message.danger {
+        background: #ff444422;
+        border-color: var(--critical);
+      }
+      .flash-message.warning {
+        background: #ff880022;
+        border-color: var(--high);
+      }
+      .flash-message.info {
+        background: #00d4ff22;
+        border-color: var(--accent);
+      }
+
+      /* ===== RESPONSIVE ===== */
+      .menu-toggle {
+        display: none;
+        background: none;
+        border: none;
+        color: var(--text-primary);
+        font-size: 24px;
+        cursor: pointer;
+        padding: 10px;
+      }
+
+      @media (max-width: 768px) {
+        .sidebar {
+          transform: translateX(-100%);
+        }
+        .sidebar.open {
+          transform: translateX(0);
+        }
+        .main-content {
+          margin-left: 0;
+          padding: 10px;
+        }
+        .menu-toggle {
+          display: block;
+        }
+      }
+
+      /* ===== PAGE HEADER ===== */
+      .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+      }
+
+      .page-header h1 {
+        font-size: 24px;
+        letter-spacing: 0.01em;
+        text-shadow: 0 0 20px #20d7f526;
+      }
+
+      .page-header .header-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .btn {
+        padding: 8px 18px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.25s ease;
+        text-decoration: none;
+        display: inline-block;
+        box-shadow: 0 5px 16px #00000022;
+      }
+
+      .btn-primary {
+        background: var(--accent);
+        color: var(--bg-primary);
+      }
+
+      .btn-primary:hover {
+        background: #00e4ff;
+        transform: translateY(-1px);
+        box-shadow: 0 0 20px #20d7f566;
+      }
+
+      .btn-danger {
+        background: var(--critical);
+        color: white;
+      }
+
+      .btn-danger:hover {
+        background: #ff6666;
+      }
+
+      .btn-success {
+        background: var(--accent2);
+        color: var(--bg-primary);
+      }
+
+      .btn-success:hover {
+        background: #44ff99;
+        box-shadow: 0 0 20px #63f5b166;
+      }
+
+      .btn-sm {
+        padding: 4px 12px;
+        font-size: 12px;
+      }
+
+      .stats-grid {
+        gap: 14px !important;
+      }
+      .stat-card {
+        background: linear-gradient(145deg, #102235, #0a1624) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 8px !important;
+        box-shadow:
+          var(--glow),
+          0 12px 26px #00000024 !important;
+        position: relative;
+        overflow: hidden;
+      }
+      .stat-card::after {
+        content: "";
+        position: absolute;
+        width: 90px;
+        height: 90px;
+        right: -38px;
+        top: -38px;
+        border: 1px solid #20d7f533;
+        border-radius: 50%;
+        box-shadow:
+          0 0 0 12px #20d7f20d,
+          0 0 0 24px #20d7f20a;
+      }
+      .stat-card:hover {
+        transform: translateY(-3px);
+        border-color: #20d7f588 !important;
+      }
+      .stat-icon {
+        color: var(--accent) !important;
+        filter: drop-shadow(0 0 8px #20d7f566);
+      }
+      input:focus,
+      select:focus,
+      textarea:focus,
+      button:focus-visible,
+      a:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* ===== SHARED PRODUCT SURFACE ===== */
+      ::selection {
+        background: var(--accent);
+        color: #041018;
+      }
+      ::-webkit-scrollbar {
+        width: 9px;
+        height: 9px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #07101a;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #1f526e;
+        border: 2px solid #07101a;
+        border-radius: 8px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--accent);
+      }
+      h1,
+      h2,
+      h3,
+      h4 {
+        color: var(--text-primary);
+      }
+      h1 i,
+      h2 i,
+      h3 i,
+      h4 i {
+        color: var(--accent);
+        margin-right: 7px;
+      }
+      .page-header {
+        position: relative;
+        padding: 16px 18px;
+        margin-bottom: 20px;
+        background: linear-gradient(105deg, #10283bdb, #091622c7 72%);
+        border: 1px solid #24516e;
+        border-radius: 8px;
+        box-shadow:
+          0 0 30px #20d7f516,
+          inset 0 1px #ffffff0a;
+        overflow: hidden;
+      }
+      .page-header::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: linear-gradient(var(--accent), var(--accent2));
+        box-shadow: 0 0 16px var(--accent);
+      }
+      .page-header::after {
+        content: "SENTINEL / SECURE OPERATIONS";
+        position: absolute;
+        right: 18px;
+        bottom: 8px;
+        color: #8ab7c11f;
+        font: 9px monospace;
+        letter-spacing: 0.16em;
+        pointer-events: none;
+      }
+      .page-header h1 {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: clamp(20px, 2vw, 26px);
+      }
+      .page-header .header-actions {
+        position: relative;
+        z-index: 1;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .btn {
+        border: 1px solid transparent;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, #20d7f5, #138caf);
+        border-color: #6deaff88;
+      }
+      .btn-success {
+        background: linear-gradient(135deg, #63f5b1, #1aaf7a);
+        border-color: #9affd088;
+      }
+      .btn-danger {
+        background: linear-gradient(135deg, #ff5576, #b82d4b);
+        border-color: #ff9aad88;
+      }
+      .btn-info {
+        background: linear-gradient(135deg, #5bb5ff, #3771b7);
+        color: #f2f9ff;
+        border-color: #9dd4ff77;
+      }
+      .btn-secondary {
+        background: linear-gradient(135deg, #334c60, #1b2d3e);
+        color: var(--text-primary);
+        border-color: #62849a66;
+      }
+      .btn:hover {
+        filter: brightness(1.12);
+        transform: translateY(-2px);
+        box-shadow:
+          0 0 22px #20d7f544,
+          0 8px 18px #0005;
+      }
+      .btn:active {
+        transform: translateY(0);
+      }
+      .filter-section,
+      .table-container,
+      .report-card,
+      .graph-wrapper,
+      .panel,
+      .card {
+        background: linear-gradient(145deg, #0e2030e8, #091522e8);
+        border-color: #1e4966;
+        box-shadow:
+          0 12px 28px #00000024,
+          inset 0 1px #ffffff08;
+      }
+      .filter-section:hover,
+      .table-container:hover,
+      .report-card:hover {
+        border-color: #20d7f555;
+        box-shadow:
+          0 0 22px #20d7f512,
+          0 12px 28px #00000030;
+      }
+      input,
+      select,
+      textarea {
+        background: #071421e8 !important;
+        border-color: #23516d !important;
+        color: var(--text-primary) !important;
+      }
+      input::placeholder,
+      textarea::placeholder {
+        color: #6e8998;
+      }
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid #2a6078;
+        border-radius: 999px;
+        padding: 5px 9px;
+        background: #0a2636;
+        font-size: 11px;
+        letter-spacing: 0.02em;
+      }
+      .status-badge i {
+        font-size: 8px;
+      }
+      .status-fresh {
+        color: var(--accent2);
+        border-color: #63f5b166;
+        box-shadow: 0 0 14px #63f5b11f;
+      }
+      .status-error {
+        color: var(--critical);
+        border-color: #ff557666;
+        background: #3b1420;
+      }
+      .legend-container,
+      .legend {
+        background: #091725cc;
+        border: 1px solid #224d68;
+        border-radius: 6px;
+        box-shadow: inset 0 1px #ffffff08;
+      }
+      .sidebar .nav-item i {
+        color: #7daabd;
+        transition:
+          color 0.25s,
+          filter 0.25s;
+      }
+      .sidebar .nav-item:hover i,
+      .sidebar .nav-item.active i {
+        color: var(--accent);
+        filter: drop-shadow(0 0 6px #20d7f5aa);
+      }
+      @media (max-width: 900px) {
+        .page-header {
+          align-items: flex-start;
+          gap: 14px;
+          flex-direction: column;
+        }
+        .page-header::after {
+          display: none;
+        }
+        .page-header .header-actions {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ===== SIDEBAR ===== -->
+    <div class="sidebar" id="sidebar">
+      <div class="logo">
+        <h2><i class="fas fa-shield-halved"></i> Sentinel AI</h2>
+        <small>Network Security Scanner</small>
+      </div>
+
+      <a
+        href="{{ url_for('dashboard') }}"
+        class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}"
+      >
+        <i class="fas fa-chart-pie"></i> Dashboard
+      </a>
+      <a
+        href="{{ url_for('ai_soc') }}"
+        class="nav-item {% if request.endpoint == 'ai_soc' %}active{% endif %}"
+      >
+        <i class="fas fa-brain"></i> AI SOC
+      </a>
+      <a
+        href="{{ url_for('ai_assistant') }}"
+        class="nav-item {% if request.endpoint == 'ai_assistant' %}active{% endif %}"
+      >
+        <i class="fas fa-comments"></i> AI Assistant
+      </a>
+      {% if user_role in ['administrator', 'manager'] %}
+      <a
+        href="{{ url_for('audit_log_page') }}"
+        class="nav-item {% if request.endpoint == 'audit_log_page' %}active{% endif %}"
+      >
+        <i class="fas fa-fingerprint"></i> Audit Log
+      </a>
+      {% endif %}
+      <a
+        href="{{ url_for('devices') }}"
+        class="nav-item {% if request.endpoint == 'devices' %}active{% endif %}"
+      >
+        <i class="fas fa-network-wired"></i> Devices
+      </a>
+      {% if user_role in ['administrator', 'manager'] %}
+      <a
+        href="{{ url_for('scan_page') }}"
+        class="nav-item {% if request.endpoint == 'scan_page' %}active{% endif %}"
+      >
+        <i class="fas fa-scan"></i> Scan
+      </a>
+      {% endif %}
+      <a
+        href="{{ url_for('reports') }}"
+        class="nav-item {% if request.endpoint == 'reports' %}active{% endif %}"
+      >
+        <i class="fas fa-file-alt"></i> Reports
+      </a>
+      <a
+        href="{{ url_for('network') }}"
+        class="nav-item {% if request.endpoint == 'network' %}active{% endif %}"
+      >
+        <i class="fas fa-project-diagram"></i> Network Topology
+      </a>
+      <a
+        href="{{ url_for('device_map') }}"
+        class="nav-item {% if request.endpoint == 'device_map' %}active{% endif %}"
+      >
+        <i class="fas fa-map-marked-alt"></i> Campus Map
+      </a>
+      <a
+        href="{{ url_for('recommendations') }}"
+        class="nav-item {% if request.endpoint == 'recommendations' %}active{% endif %}"
+      >
+        <i class="fas fa-robot"></i> AI Recommendations
+      </a>
+
+      <a
+        href="{{ url_for('attack_intelligence') }}"
+        class="nav-item {% if request.endpoint == 'attack_intelligence' %}active{% endif %}"
+      >
+        <i class="fas fa-bolt"></i> Attack Intelligence
+      </a>
+
+      {% if user_role == 'administrator' %}
+      <a
+        href="{{ url_for('admin_users') }}"
+        class="nav-item {% if request.endpoint == 'admin_users' %}active{% endif %}"
+      >
+        <i class="fas fa-users-cog"></i> Admin
+      </a>
+      {% endif %}
+
+      <div class="user-info">
+        <div class="name">{{ full_name or username }}</div>
+        <div class="role">{{ user_role|title }}</div>
+        <a href="{{ url_for('logout') }}" class="logout">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      </div>
+    </div>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div class="main-content">
+      <button class="menu-toggle" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+      </button>
+
+      <!-- Flash Messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %}
+      <div class="flash-messages">
+        {% for category, message in messages %}
+        <div class="flash-message {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %} {% endwith %}
+
+      <!-- Page Content -->
+      {% block content %}{% endblock %}
+    </div>
+
+    <script>
+      function toggleSidebar() {
+        document.getElementById("sidebar").classList.toggle("open");
+      }
+
+      // Close sidebar on outside click (mobile)
+      document.addEventListener("click", function (e) {
+        const sidebar = document.getElementById("sidebar");
+        const toggle = document.querySelector(".menu-toggle");
+        if (window.innerWidth <= 768) {
+          if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
+            sidebar.classList.remove("open");
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

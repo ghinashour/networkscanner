@@ -1,0 +1,27 @@
+{
+  "model_path": "data\\models\\device_classifier_20260811_184348.pkl",
+  "timestamp": "20260811_184348",
+  "best_model": "Random Forest",
+  "accuracy": 0.95,
+  "n_samples": 299,
+  "n_features": 10,
+  "classes": [
+    "IoT",
+    "Mobile",
+    "Router",
+    "Server",
+    "Windows_PC"
+  ],
+  "feature_names": [
+    "iot_service_count",
+    "has_iot_service",
+    "server_service_count",
+    "has_server_service",
+    "router_service_count",
+    "has_router_service",
+    "mobile_service_count",
+    "has_mobile_service",
+    "windows_service_count",
+    "has_windows_service"
+  ]
+}

@@ -1,0 +1,213 @@
+{% extends "base.html" %} {% block content %}
+<style>
+  .audit-hero {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    align-items: flex-start;
+    padding: 20px 22px;
+    margin-bottom: 16px;
+    background: linear-gradient(110deg, #102f40, #091824 70%);
+    border: 1px solid #2a7182;
+    border-radius: 8px;
+    box-shadow: 0 0 30px #20d7f522;
+  }
+  .audit-hero h1 {
+    margin: 0 0 6px;
+  }
+  .audit-hero h1 i {
+    color: var(--accent2);
+  }
+  .audit-hero p {
+    max-width: 720px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .audit-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .audit-actions button {
+    white-space: nowrap;
+  }
+  .audit-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .audit-stat {
+    background: linear-gradient(145deg, #102638, #0a1724);
+    border: 1px solid #245370;
+    border-radius: 7px;
+    padding: 14px;
+  }
+  .audit-stat b {
+    display: block;
+    color: var(--accent);
+    font-size: 22px;
+  }
+  .audit-stat span {
+    color: var(--text-secondary);
+    font-size: 11px;
+  }
+  .audit-table-wrap {
+    background: linear-gradient(145deg, #0e2030e8, #091522e8);
+    border: 1px solid #1e4966;
+    border-radius: 8px;
+    padding: 16px;
+    overflow: auto;
+  }
+  .audit-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .audit-table th,
+  .audit-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #214157;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .audit-table th {
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+  .audit-table td {
+    color: #c5d8df;
+  }
+  .audit-hash {
+    color: #6f9bab;
+    font: 10px monospace;
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .audit-action {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .audit-details {
+    color: var(--text-secondary);
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  @media (max-width: 700px) {
+    .audit-hero {
+      display: block;
+    }
+    .audit-actions {
+      margin-top: 14px;
+    }
+    .audit-summary {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+<section class="audit-hero">
+  <div>
+    <h1><i class="fas fa-fingerprint"></i> Audit & Evidence Integrity</h1>
+    <p>
+      Append-only activity history for accountability, compliance review, and
+      forensic reconstruction. Every event is linked to the previous event with
+      a SHA-256 integrity hash.
+    </p>
+  </div>
+  <div class="audit-actions">
+    <button class="btn btn-primary btn-sm" onclick="loadAudit()">
+      <i class="fas fa-rotate"></i> Refresh</button
+    ><button class="btn btn-success btn-sm" onclick="verifyAudit()">
+      <i class="fas fa-shield-check"></i> Verify chain
+    </button>
+  </div>
+</section>
+<div class="audit-summary">
+  <div class="audit-stat">
+    <b id="auditCount">-</b><span>Events loaded</span>
+  </div>
+  <div class="audit-stat">
+    <b id="auditUsers">-</b><span>Actors represented</span>
+  </div>
+  <div class="audit-stat">
+    <b id="auditStatus">Checking</b><span>Evidence chain status</span>
+  </div>
+</div>
+<div class="audit-table-wrap">
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Actor</th>
+        <th>Action</th>
+        <th>Resource</th>
+        <th>Details</th>
+        <th>Event hash</th>
+      </tr>
+    </thead>
+    <tbody id="auditBody">
+      <tr>
+        <td colspan="6">Loading audit evidence...</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<script>
+  const auditEsc = (value) =>
+    String(value ?? "").replace(
+      /[&<>'"]/g,
+      (c) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "'": "&#39;",
+          '"': "&quot;",
+        })[c],
+    );
+  function loadAudit() {
+    fetch("/api/audit/log?limit=200")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.success) throw new Error(data.error);
+        const events = data.events || [];
+        document.getElementById("auditCount").textContent = events.length;
+        document.getElementById("auditUsers").textContent = new Set(
+          events.map((e) => e.username || "system"),
+        ).size;
+        document.getElementById("auditBody").innerHTML = events.length
+          ? events
+              .map(
+                (e) =>
+                  `<tr><td>${auditEsc(new Date(e.event_time).toLocaleString())}</td><td>${auditEsc(e.username || "system")}</td><td class="audit-action">${auditEsc(e.action)}</td><td>${auditEsc(e.resource_type || "")} ${auditEsc(e.resource_id || "")}</td><td class="audit-details" title="${auditEsc(e.details)}">${auditEsc(e.details)}</td><td class="audit-hash" title="${auditEsc(e.event_hash)}">${auditEsc(e.event_hash)}</td></tr>`,
+              )
+              .join("")
+          : '<tr><td colspan="6">No audit events recorded yet.</td></tr>';
+      })
+      .catch((error) => {
+        document.getElementById("auditBody").innerHTML =
+          `<tr><td colspan="6" style="color:var(--critical)">${auditEsc(error.message)}</td></tr>`;
+      });
+  }
+  function verifyAudit() {
+    fetch("/api/audit/verify")
+      .then((r) => r.json())
+      .then((data) => {
+        const status = document.getElementById("auditStatus");
+        status.textContent = data.valid
+          ? `Valid (${data.verified_events})`
+          : `Broken at #${data.broken_at}`;
+        status.style.color = data.valid ? "var(--accent2)" : "var(--critical)";
+      });
+  }
+  document.addEventListener("DOMContentLoaded", () => {
+    loadAudit();
+    verifyAudit();
+  });
+</script>
+{% endblock %}

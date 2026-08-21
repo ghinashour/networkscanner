@@ -1,0 +1,476 @@
+{% extends "base.html" %} {% block content %}
+<div class="page-header">
+  <h1>🤖 AI Security Recommendations</h1>
+  <div class="header-actions">
+    <button class="btn btn-primary btn-sm" onclick="refreshRecommendations()">
+      <i class="fas fa-sync"></i> Refresh
+    </button>
+    <button class="btn btn-success btn-sm" onclick="generateRecommendations()">
+      <i class="fas fa-robot"></i> Generate New
+    </button>
+  </div>
+</div>
+
+<!-- Summary Cards -->
+<div
+  style="
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+  "
+>
+  <div
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    "
+  >
+    <div
+      style="font-size: 24px; font-weight: bold; color: var(--accent)"
+      id="recTotal"
+    >
+      -
+    </div>
+    <div style="font-size: 12px; color: var(--text-secondary)">
+      Total Recommendations
+    </div>
+  </div>
+  <div
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    "
+  >
+    <div
+      style="font-size: 24px; font-weight: bold; color: var(--critical)"
+      id="recCritical"
+    >
+      -
+    </div>
+    <div style="font-size: 12px; color: var(--text-secondary)">Critical</div>
+  </div>
+  <div
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    "
+  >
+    <div
+      style="font-size: 24px; font-weight: bold; color: var(--high)"
+      id="recHigh"
+    >
+      -
+    </div>
+    <div style="font-size: 12px; color: var(--text-secondary)">High</div>
+  </div>
+  <div
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    "
+  >
+    <div
+      style="font-size: 24px; font-weight: bold; color: var(--accent2)"
+      id="recDone"
+    >
+      -
+    </div>
+    <div style="font-size: 12px; color: var(--text-secondary)">Completed</div>
+  </div>
+</div>
+
+<!-- Filter Controls -->
+<div
+  style="
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+  "
+>
+  <select
+    id="priorityFilter"
+    onchange="filterRecommendations()"
+    style="
+      padding: 8px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+    "
+  >
+    <option value="all">All Priorities</option>
+    <option value="critical">Critical</option>
+    <option value="high">High</option>
+    <option value="medium">Medium</option>
+    <option value="low">Low</option>
+  </select>
+  <select
+    id="statusFilter"
+    onchange="filterRecommendations()"
+    style="
+      padding: 8px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+    "
+  >
+    <option value="all">All Statuses</option>
+    <option value="pending">Pending</option>
+    <option value="in_progress">In Progress</option>
+    <option value="done">Done</option>
+    <option value="dismissed">Dismissed</option>
+  </select>
+  <select
+    id="typeFilter"
+    onchange="filterRecommendations()"
+    style="
+      padding: 8px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+    "
+  >
+    <option value="all">All Types</option>
+    <option value="vulnerability">Vulnerability</option>
+    <option value="risk">Risk</option>
+    <option value="hardening">Hardening</option>
+    <option value="network">Network</option>
+    <option value="os">OS</option>
+    <option value="iot">IoT</option>
+    <option value="best_practice">Best Practice</option>
+    <option value="monitoring">Monitoring</option>
+  </select>
+  <input
+    type="text"
+    id="searchInput"
+    onkeyup="filterRecommendations()"
+    placeholder="Search recommendations..."
+    style="
+      flex: 1;
+      min-width: 150px;
+      padding: 8px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+    "
+  />
+</div>
+
+<!-- Recommendations List -->
+<div id="recommendationsList">
+  <div style="text-align: center; padding: 40px; color: var(--text-secondary)">
+    Loading recommendations...
+  </div>
+</div>
+
+<!-- Recommendation Detail Modal -->
+<div
+  id="recModal"
+  style="
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+  "
+>
+  <div
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 30px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    "
+  >
+    <div
+      style="
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      "
+    >
+      <h2 style="color: var(--accent)">Recommendation Detail</h2>
+      <button
+        onclick="closeRecModal()"
+        style="
+          background: none;
+          border: none;
+          color: var(--text-secondary);
+          font-size: 24px;
+          cursor: pointer;
+        "
+      >
+        ✕
+      </button>
+    </div>
+    <div id="recModalContent"></div>
+  </div>
+</div>
+
+<script>
+  let allRecommendations = [];
+
+  document.addEventListener("DOMContentLoaded", function () {
+    refreshRecommendations();
+  });
+
+  function refreshRecommendations() {
+    fetch("/api/recommendations/all")
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          allRecommendations = data.recommendations;
+          updateStats(data.summary);
+          renderRecommendations(allRecommendations);
+        }
+      })
+      .catch((error) => console.error("Error loading recommendations:", error));
+  }
+
+  function updateStats(summary) {
+    document.getElementById("recTotal").textContent = summary.total || 0;
+    document.getElementById("recCritical").textContent =
+      summary.priority_counts?.critical || 0;
+    document.getElementById("recHigh").textContent =
+      summary.priority_counts?.high || 0;
+
+    const doneCount = summary.status_counts?.done || 0;
+    document.getElementById("recDone").textContent = doneCount;
+  }
+
+  function renderRecommendations(recs) {
+    const container = document.getElementById("recommendationsList");
+
+    if (recs.length === 0) {
+      container.innerHTML = `
+                <div style="text-align: center; padding: 60px; color: var(--text-secondary);">
+                    <div style="font-size: 48px; margin-bottom: 20px;">🤖</div>
+                    <div style="font-size: 18px;">No recommendations found</div>
+                    <div style="font-size: 14px; margin-top: 10px;">Click "Generate New" to create AI recommendations</div>
+                </div>
+            `;
+      return;
+    }
+
+    let html = "";
+    recs.forEach((rec) => {
+      const priorityColor =
+        {
+          critical: "var(--critical)",
+          high: "var(--high)",
+          medium: "var(--medium)",
+          low: "var(--accent2)",
+        }[rec.priority] || "var(--text-secondary)";
+
+      const statusColors = {
+        pending: "#ff8800",
+        in_progress: "#00d4ff",
+        done: "#00ff88",
+        dismissed: "#8899aa",
+      };
+
+      html += `
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 15px; margin-bottom: 10px; border-left: 4px solid ${priorityColor};">
+                    <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: bold; color: ${priorityColor};">
+                                ${rec.title}
+                            </div>
+                            <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+                                ${rec.description}
+                            </div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
+                                <span style="background: ${priorityColor}22; color: ${priorityColor}; padding: 2px 10px; border-radius: 10px;">
+                                    ${rec.priority.toUpperCase()}
+                                </span>
+                                <span style="background: ${statusColors[rec.status] || "#8899aa"}22; color: ${statusColors[rec.status] || "#8899aa"}; padding: 2px 10px; border-radius: 10px; margin-left: 5px;">
+                                    ${rec.status || "pending"}
+                                </span>
+                                <span style="margin-left: 5px;">${rec.device_ip || ""}</span>
+                                <span style="margin-left: 5px; font-size: 11px;">${rec.recommendation_type || ""}</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 5px; margin-top: 5px;">
+                            <button onclick="showRecommendationDetail(${rec.id})" class="btn btn-primary btn-sm" style="background: var(--accent); color: var(--bg-primary);">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <select onchange="updateStatus(${rec.id}, this.value)" style="padding: 4px 8px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); font-size: 11px;">
+                                <option value="pending" ${rec.status === "pending" ? "selected" : ""}>Pending</option>
+                                <option value="in_progress" ${rec.status === "in_progress" ? "selected" : ""}>In Progress</option>
+                                <option value="done" ${rec.status === "done" ? "selected" : ""}>Done</option>
+                                <option value="dismissed" ${rec.status === "dismissed" ? "selected" : ""}>Dismiss</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            `;
+    });
+
+    container.innerHTML = html;
+  }
+
+  function filterRecommendations() {
+    const priority = document.getElementById("priorityFilter").value;
+    const status = document.getElementById("statusFilter").value;
+    const type = document.getElementById("typeFilter").value;
+    const search = document.getElementById("searchInput").value.toLowerCase();
+
+    let filtered = allRecommendations;
+
+    if (priority !== "all") {
+      filtered = filtered.filter((r) => r.priority === priority);
+    }
+    if (status !== "all") {
+      filtered = filtered.filter((r) => r.status === status);
+    }
+    if (type !== "all") {
+      filtered = filtered.filter((r) => r.recommendation_type === type);
+    }
+    if (search) {
+      filtered = filtered.filter(
+        (r) =>
+          r.title.toLowerCase().includes(search) ||
+          r.description.toLowerCase().includes(search),
+      );
+    }
+
+    renderRecommendations(filtered);
+  }
+
+  function generateRecommendations() {
+    if (!confirm("Generate new AI recommendations for all devices?")) return;
+
+    document.getElementById("recommendationsList").innerHTML =
+      '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">🤖 Generating recommendations...</div>';
+
+    fetch("/api/recommendations/generate", {
+      method: "POST",
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          alert(
+            `Generated ${data.summary.total_recommendations} recommendations!`,
+          );
+          refreshRecommendations();
+        } else {
+          alert(
+            "Error generating recommendations: " +
+              (data.error || "Unknown error"),
+          );
+        }
+      })
+      .catch((error) => {
+        alert("Error generating recommendations");
+        console.error(error);
+      });
+  }
+
+  function showRecommendationDetail(recId) {
+    fetch(`/api/recommendations/${recId}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          const rec = data.recommendation;
+          const modalContent = document.getElementById("recModalContent");
+
+          modalContent.innerHTML = `
+                        <div style="margin-bottom: 15px;">
+                            <div style="font-size: 18px; font-weight: bold; color: var(--accent);">${rec.title}</div>
+                            <div style="margin-top: 10px; color: var(--text-secondary);">${rec.description}</div>
+                        </div>
+                        <div style="background: var(--bg-primary); border-radius: 6px; padding: 15px; margin: 15px 0;">
+                            <strong style="color: var(--accent);">Recommended Action:</strong>
+                            <div style="margin-top: 5px; color: var(--text-secondary);">${rec.action || "No specific action provided"}</div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
+                            <div><strong>Priority:</strong> <span style="color: ${rec.priority === "critical" ? "var(--critical)" : rec.priority === "high" ? "var(--high)" : rec.priority === "medium" ? "var(--medium)" : "var(--accent2)"};">${rec.priority.toUpperCase()}</span></div>
+                            <div><strong>Status:</strong> ${rec.status || "pending"}</div>
+                            <div><strong>Type:</strong> ${rec.recommendation_type || "General"}</div>
+                            <div><strong>Device:</strong> ${rec.device_ip || rec.device_id || "Unknown"}</div>
+                            <div><strong>Created:</strong> ${rec.created_date ? new Date(rec.created_date).toLocaleString() : "Unknown"}</div>
+                        </div>
+                        <div style="margin-top: 15px; display: flex; gap: 10px;">
+                            <select id="statusUpdateSelect" style="padding: 8px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                                <option value="pending" ${rec.status === "pending" ? "selected" : ""}>Pending</option>
+                                <option value="in_progress" ${rec.status === "in_progress" ? "selected" : ""}>In Progress</option>
+                                <option value="done" ${rec.status === "done" ? "selected" : ""}>Done</option>
+                                <option value="dismissed" ${rec.status === "dismissed" ? "selected" : ""}>Dismiss</option>
+                            </select>
+                            <button onclick="updateStatusFromModal(${rec.id})" class="btn btn-primary" style="background: var(--accent); color: var(--bg-primary);">
+                                Update Status
+                            </button>
+                        </div>
+                    `;
+
+          document.getElementById("recModal").style.display = "flex";
+        }
+      })
+      .catch((error) =>
+        console.error("Error loading recommendation detail:", error),
+      );
+  }
+
+  function updateStatus(recId, status) {
+    fetch(`/api/recommendations/${recId}/status`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status: status }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          refreshRecommendations();
+        } else {
+          alert("Error updating status");
+        }
+      })
+      .catch((error) => console.error("Error updating status:", error));
+  }
+
+  function updateStatusFromModal(recId) {
+    const status = document.getElementById("statusUpdateSelect").value;
+    updateStatus(recId, status);
+    closeRecModal();
+  }
+
+  function closeRecModal() {
+    document.getElementById("recModal").style.display = "none";
+  }
+
+  // Close modal on outside click
+  document.getElementById("recModal").addEventListener("click", function (e) {
+    if (e.target === this) closeRecModal();
+  });
+</script>
+{% endblock %}

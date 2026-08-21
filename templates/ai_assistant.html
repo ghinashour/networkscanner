@@ -1,0 +1,323 @@
+{% extends "base.html" %} {% block content %}
+<style>
+  .assistant-shell {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .assistant-hero {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    align-items: flex-start;
+    padding: 22px;
+    margin-bottom: 16px;
+    background: linear-gradient(110deg, #102f40, #091824 70%);
+    border: 1px solid #2a7182;
+    border-radius: 8px;
+    box-shadow:
+      0 0 34px #20d7f522,
+      inset 0 1px #fff1;
+  }
+  .assistant-hero h1 {
+    margin: 0 0 7px;
+  }
+  .assistant-hero h1 i {
+    color: var(--accent2);
+  }
+  .assistant-hero p {
+    max-width: 720px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .assistant-state {
+    color: var(--accent2);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .assistant-state i {
+    font-size: 8px;
+    margin-right: 5px;
+  }
+  .chat-window {
+    min-height: 510px;
+    max-height: calc(100vh - 360px);
+    overflow: auto;
+    padding: 20px;
+    background: linear-gradient(145deg, #0b1b2a, #07111d);
+    border: 1px solid #28516b;
+    border-radius: 8px 8px 0 0;
+    box-shadow: inset 0 0 40px #20d7f50a;
+  }
+  .message {
+    display: flex;
+    gap: 11px;
+    margin-bottom: 17px;
+    max-width: 84%;
+  }
+  .message.user {
+    margin-left: auto;
+    flex-direction: row-reverse;
+  }
+  .message-avatar {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #103548;
+    color: var(--accent);
+    border: 1px solid #2f7185;
+    box-shadow: 0 0 14px #20d7f533;
+  }
+  .message.user .message-avatar {
+    color: var(--accent2);
+    background: #10372f;
+    border-color: #3e9d7b;
+  }
+  .message-bubble {
+    padding: 12px 14px;
+    border: 1px solid #28536a;
+    background: #102638;
+    border-radius: 4px 10px 10px 10px;
+    color: #c9dbe1;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-line;
+  }
+  .message.user .message-bubble {
+    background: #12372f;
+    border-color: #337e6e;
+    border-radius: 10px 4px 10px 10px;
+  }
+  .message-meta {
+    color: #7794a0;
+    font-size: 10px;
+    margin-top: 5px;
+  }
+  .message.user .message-meta {
+    text-align: right;
+  }
+  .suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    padding: 13px 16px;
+    background: #091725;
+    border-left: 1px solid #28516b;
+    border-right: 1px solid #28516b;
+  }
+  .suggestion {
+    cursor: pointer;
+    background: #0c2938;
+    border: 1px solid #2c6278;
+    color: #a8c9d3;
+    border-radius: 999px;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+  .suggestion:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 13px #20d7f533;
+  }
+  .composer {
+    display: flex;
+    gap: 9px;
+    padding: 14px 16px;
+    background: #0a1825;
+    border: 1px solid #28516b;
+    border-radius: 0 0 8px 8px;
+  }
+  .composer input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 14px;
+    border-radius: 5px;
+  }
+  .composer button {
+    min-width: 48px;
+  }
+  .sources {
+    margin-top: 14px;
+    padding: 11px 13px;
+    background: #071522;
+    border: 1px solid #214963;
+    border-radius: 5px;
+    color: #7d9ba7;
+    font-size: 10px;
+  }
+  .sources i {
+    color: var(--accent);
+    margin-right: 5px;
+  }
+  @media (max-width: 700px) {
+    .assistant-hero {
+      display: block;
+    }
+    .assistant-state {
+      display: block;
+      margin-top: 14px;
+    }
+    .message {
+      max-width: 96%;
+    }
+  }
+</style>
+
+<div class="assistant-shell">
+  <section class="assistant-hero">
+    <div>
+      <h1><i class="fas fa-comments"></i> Sentinel AI Assistant</h1>
+      <p>
+        Ask questions about your live network, vulnerabilities, anomalies,
+        recommendations, routers, and campus device placement. Responses are
+        grounded in your project data and include their evidence sources.
+      </p>
+    </div>
+    <div class="assistant-state">
+      <i class="fas fa-circle"></i> Evidence mode online
+    </div>
+  </section>
+  <section class="chat-window" id="chatWindow">
+    <div class="message">
+      <div class="message-avatar"><i class="fas fa-brain"></i></div>
+      <div>
+        <div class="message-bubble">
+          Hello. I am your network security assistant. I can investigate risk,
+          devices, routers, anomalies, recommendations, and campus locations.
+          What would you like to know?
+        </div>
+        <div class="message-meta">Sentinel AI · ready</div>
+      </div>
+    </div>
+  </section>
+  <div class="suggestions">
+    <button
+      class="suggestion"
+      onclick="askSuggested('Which devices should I investigate first?')"
+    >
+      <i class="fas fa-triangle-exclamation"></i> Priority devices</button
+    ><button
+      class="suggestion"
+      onclick="askSuggested('Explain why the riskiest device is prioritized')"
+    >
+      <i class="fas fa-circle-question"></i> Explain risk</button
+    ><button class="suggestion" onclick="askSuggested('Show me the routers')">
+      <i class="fas fa-router"></i> Routers</button
+    ><button
+      class="suggestion"
+      onclick="askSuggested('Where are the highest risk devices located?')"
+    >
+      <i class="fas fa-map-marker-alt"></i> Campus locations</button
+    ><button
+      class="suggestion"
+      onclick="askSuggested('What changed between scans?')"
+    >
+      <i class="fas fa-code-compare"></i> Compare scans</button
+    ><button
+      class="suggestion"
+      onclick="askSuggested('What anomalies are currently available?')"
+    >
+      <i class="fas fa-wave-square"></i> Anomalies</button
+    ><button
+      class="suggestion"
+      onclick="askSuggested('What should I remediate next?')"
+    >
+      <i class="fas fa-list-check"></i> Remediation</button
+    ><button
+      class="suggestion"
+      onclick="askSuggested('Draft an incident for the highest risk device')"
+    >
+      <i class="fas fa-file-shield"></i> Draft incident</button
+    ><button
+      class="suggestion"
+      onclick="askSuggested('Generate an executive briefing')"
+    >
+      <i class="fas fa-chart-line"></i> Executive brief
+    </button>
+  </div>
+  <form class="composer" id="assistantForm">
+    <input
+      id="assistantInput"
+      autocomplete="off"
+      placeholder="Ask Sentinel AI about your network..."
+    /><button class="btn btn-primary" type="submit" title="Send question">
+      <i class="fas fa-arrow-up"></i>
+    </button>
+  </form>
+  <div class="sources" id="assistantSources">
+    <i class="fas fa-database"></i> Answers will cite live device inventory,
+    risk/vulnerability tables, anomaly signals, recommendations, and operational
+    location data.
+  </div>
+</div>
+
+<script>
+  const chatWindow = document.getElementById("chatWindow");
+  const input = document.getElementById("assistantInput");
+  const form = document.getElementById("assistantForm");
+  const escapeAssistant = (value) =>
+    String(value ?? "").replace(
+      /[&<>'"]/g,
+      (c) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "'": "&#39;",
+          '"': "&quot;",
+        })[c],
+    );
+  function addMessage(text, role = "assistant", meta = "Sentinel AI") {
+    const wrapper = document.createElement("div");
+    wrapper.className = `message ${role === "user" ? "user" : ""}`;
+    wrapper.innerHTML = `<div class="message-avatar"><i class="fas fa-${role === "user" ? "user" : "brain"}"></i></div><div><div class="message-bubble">${escapeAssistant(text).replace(/\n/g, "<br>")}</div><div class="message-meta">${meta}</div></div>`;
+    chatWindow.appendChild(wrapper);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+    return wrapper;
+  }
+  function askSuggested(question) {
+    input.value = question;
+    form.requestSubmit();
+  }
+  function askAssistant(question) {
+    const pending = addMessage(
+      "Analyzing current security evidence...",
+      "assistant",
+      "Sentinel AI · querying",
+    );
+    fetch("/api/ai-assistant/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        pending.remove();
+        if (!data.success)
+          throw new Error(data.error || "Assistant unavailable");
+        addMessage(
+          data.answer,
+          "assistant",
+          `Sentinel AI · ${data.intent.replace("_", " ")}`,
+        );
+        document.getElementById("assistantSources").innerHTML =
+          `<i class="fas fa-database"></i> Evidence used: ${data.sources.map(escapeAssistant).join(" · ")}`;
+      })
+      .catch((error) => {
+        pending.remove();
+        addMessage(error.message, "assistant", "Sentinel AI · error");
+      });
+  }
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const question = input.value.trim();
+    if (!question) return;
+    addMessage(question, "user", "You");
+    input.value = "";
+    askAssistant(question);
+  });
+</script>
+{% endblock %}

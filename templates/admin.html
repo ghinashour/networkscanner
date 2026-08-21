@@ -1,0 +1,292 @@
+{% extends "base.html" %} {% block content %}
+<div class="page-header">
+  <h1>👑 Admin Panel</h1>
+  <div class="header-actions">
+    <button
+      class="btn btn-primary"
+      onclick="document.getElementById('addUserModal').style.display = 'flex'"
+    >
+      <i class="fas fa-user-plus"></i> Add User
+    </button>
+  </div>
+</div>
+
+<!-- Users Table -->
+<div
+  style="
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+  "
+>
+  <h3 style="margin-bottom: 15px; font-size: 16px">👥 User Management</h3>
+
+  <div style="overflow-x: auto">
+    <table style="width: 100%; border-collapse: collapse">
+      <thead>
+        <tr
+          style="
+            color: var(--text-secondary);
+            border-bottom: 2px solid var(--border-color);
+          "
+        >
+          <th style="padding: 10px; text-align: left">Username</th>
+          <th style="padding: 10px; text-align: left">Full Name</th>
+          <th style="padding: 10px; text-align: left">Email</th>
+          <th style="padding: 10px; text-align: center">Role</th>
+          <th style="padding: 10px; text-align: center">Status</th>
+          <th style="padding: 10px; text-align: center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr style="border-bottom: 1px solid var(--border-color)">
+          <td style="padding: 10px; font-weight: bold; color: var(--accent)">
+            {{ user.username }}
+          </td>
+          <td style="padding: 10px">{{ user.full_name or '-' }}</td>
+          <td style="padding: 10px; color: var(--text-secondary)">
+            {{ user.email or '-' }}
+          </td>
+          <td style="padding: 10px; text-align: center">
+            <span
+              style="
+                background: var(--accent) 22;
+                color: var(--accent);
+                padding: 2px 10px;
+                border-radius: 10px;
+                font-size: 11px;
+              "
+            >
+              {{ user.role|title }}
+            </span>
+          </td>
+          <td style="padding: 10px; text-align: center">
+            <span
+              style="color: {% if user.is_active %}var(--accent2){% else %}var(--critical){% endif %};"
+            >
+              {% if user.is_active %}<i class="fas fa-circle-check"></i>
+              Active{% else %}<i class="fas fa-circle-xmark"></i> Inactive{%
+              endif %}
+            </span>
+          </td>
+          <td style="padding: 10px; text-align: center">
+            {% if user.id != session.user_id %}
+            <form
+              method="POST"
+              action="{{ url_for('toggle_user', user_id=user.id) }}"
+              style="display: inline"
+            >
+              <button
+                type="submit"
+                class="btn btn-sm btn-primary"
+                style="background: var(--high)"
+              >
+                {% if user.is_active %}Disable{% else %}Enable{% endif %}
+              </button>
+            </form>
+            <form
+              method="POST"
+              action="{{ url_for('delete_user_route', user_id=user.id) }}"
+              style="display: inline"
+              onsubmit="return confirm('Delete user {{ user.username }}?')"
+            >
+              <button type="submit" class="btn btn-sm btn-danger">
+                Delete
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div
+  id="addUserModal"
+  style="
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+  "
+>
+  <div
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+    "
+  >
+    <div
+      style="
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      "
+    >
+      <h2 style="color: var(--accent)">👤 Add User</h2>
+      <button
+        onclick="document.getElementById('addUserModal').style.display = 'none'"
+        style="
+          background: none;
+          border: none;
+          color: var(--text-secondary);
+          font-size: 24px;
+          cursor: pointer;
+        "
+      >
+        ✕
+      </button>
+    </div>
+
+    <form method="POST" action="{{ url_for('create_user_route') }}">
+      <div style="margin-bottom: 12px">
+        <label
+          style="
+            display: block;
+            margin-bottom: 4px;
+            color: var(--text-secondary);
+            font-size: 13px;
+          "
+          >Username</label
+        >
+        <input
+          type="text"
+          name="username"
+          required
+          style="
+            width: 100%;
+            padding: 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+          "
+        />
+      </div>
+      <div style="margin-bottom: 12px">
+        <label
+          style="
+            display: block;
+            margin-bottom: 4px;
+            color: var(--text-secondary);
+            font-size: 13px;
+          "
+          >Full Name</label
+        >
+        <input
+          type="text"
+          name="full_name"
+          required
+          style="
+            width: 100%;
+            padding: 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+          "
+        />
+      </div>
+      <div style="margin-bottom: 12px">
+        <label
+          style="
+            display: block;
+            margin-bottom: 4px;
+            color: var(--text-secondary);
+            font-size: 13px;
+          "
+          >Email</label
+        >
+        <input
+          type="email"
+          name="email"
+          required
+          style="
+            width: 100%;
+            padding: 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+          "
+        />
+      </div>
+      <div style="margin-bottom: 12px">
+        <label
+          style="
+            display: block;
+            margin-bottom: 4px;
+            color: var(--text-secondary);
+            font-size: 13px;
+          "
+          >Role</label
+        >
+        <select
+          name="role"
+          style="
+            width: 100%;
+            padding: 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+          "
+        >
+          <option value="administrator">Administrator</option>
+          <option value="manager">Manager</option>
+          <option value="security_analyst">Security Analyst</option>
+        </select>
+      </div>
+      <div style="margin-bottom: 15px">
+        <label
+          style="
+            display: block;
+            margin-bottom: 4px;
+            color: var(--text-secondary);
+            font-size: 13px;
+          "
+          >Password</label
+        >
+        <input
+          type="password"
+          name="password"
+          required
+          style="
+            width: 100%;
+            padding: 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+          "
+        />
+      </div>
+      <button type="submit" class="btn btn-primary" style="width: 100%">
+        Create User
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Close modal on outside click
+  document
+    .getElementById("addUserModal")
+    .addEventListener("click", function (e) {
+      if (e.target === this) this.style.display = "none";
+    });
+</script>
+{% endblock %}

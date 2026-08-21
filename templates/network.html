@@ -1,0 +1,1726 @@
+{% extends "base.html" %} {% block content %}
+<div class="page-header">
+  <h1><i class="fas fa-project-diagram"></i> Network Topology</h1>
+  <div class="header-actions">
+    <span
+      id="liveStatus"
+      style="font-size: 12px; color: var(--text-secondary); margin-right: 15px"
+    >
+      <span class="status-badge status-fresh"
+        ><i class="fas fa-circle"></i> Live</span
+      >
+    </span>
+    <button class="btn btn-primary btn-sm" onclick="refreshGraph()">
+      <i class="fas fa-sync"></i> Refresh
+    </button>
+    <button class="btn btn-success btn-sm" onclick="autoLayout()">
+      <i class="fas fa-arrows-alt"></i> Auto Layout
+    </button>
+    <button class="btn btn-success btn-sm" onclick="zoomIn()">
+      <i class="fas fa-search-plus"></i> Zoom In
+    </button>
+    <button class="btn btn-success btn-sm" onclick="zoomOut()">
+      <i class="fas fa-search-minus"></i> Zoom Out
+    </button>
+    <button class="btn btn-success btn-sm" onclick="resetZoom()">
+      <i class="fas fa-home"></i> Reset
+    </button>
+    {% if user_role in ['administrator', 'manager'] %}
+    <button class="btn btn-info btn-sm" onclick="exportGraph()">
+      <i class="fas fa-download"></i> Export PNG
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Graph Stats -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-network-wired"></i></div>
+    <div class="stat-content">
+      <div class="stat-number" id="graphNodes">-</div>
+      <div class="stat-label">Devices</div>
+    </div>
+  </div>
+  <div class="stat-card critical">
+    <div class="stat-icon"><i class="fas fa-triangle-exclamation"></i></div>
+    <div class="stat-content">
+      <div class="stat-number" id="graphCritical">-</div>
+      <div class="stat-label">Critical Risks</div>
+    </div>
+  </div>
+  <div class="stat-card high">
+    <div class="stat-icon"><i class="fas fa-shield-halved"></i></div>
+    <div class="stat-content">
+      <div class="stat-number" id="graphHigh">-</div>
+      <div class="stat-label">High Risks</div>
+    </div>
+  </div>
+  <div class="stat-card medium">
+    <div class="stat-icon"><i class="fas fa-wave-square"></i></div>
+    <div class="stat-content">
+      <div class="stat-number" id="graphMedium">-</div>
+      <div class="stat-label">Medium Risks</div>
+    </div>
+  </div>
+  <div class="stat-card low">
+    <div class="stat-icon"><i class="fas fa-circle-check"></i></div>
+    <div class="stat-content">
+      <div class="stat-number" id="graphSecure">-</div>
+      <div class="stat-label">Secure Devices</div>
+    </div>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="legend-container">
+  <span style="color: var(--text-secondary); font-size: 13px">Legend:</span>
+  <span><span class="legend-dot critical"></span> Critical</span>
+  <span><span class="legend-dot high"></span> High</span>
+  <span><span class="legend-dot medium"></span> Medium</span>
+  <span><span class="legend-dot low"></span> Low</span>
+  <span><span class="legend-dot none"></span> Unknown</span>
+  <span
+    style="margin-left: auto; font-size: 12px; color: var(--text-secondary)"
+  >
+    <span id="connectionCount">0</span> connections
+  </span>
+</div>
+
+<div class="topology-toolbar">
+  <div class="topology-search">
+    <i class="fas fa-search"></i
+    ><input
+      id="topologySearch"
+      placeholder="Search IP, hostname, or device type"
+      oninput="applyTopologyFilters()"
+    />
+  </div>
+  <select id="topologyRisk" onchange="applyTopologyFilters()">
+    <option value="all">All risk levels</option>
+    <option value="CRITICAL">Critical</option>
+    <option value="HIGH">High</option>
+    <option value="MEDIUM">Medium</option>
+    <option value="LOW">Low</option>
+    <option value="NONE">Unrated</option>
+  </select>
+  <select id="topologyType" onchange="applyTopologyFilters()">
+    <option value="all">All device types</option>
+  </select>
+  <button class="btn btn-secondary btn-sm" onclick="clearTopologyFilters()">
+    <i class="fas fa-filter-circle-xmark"></i> Clear filters
+  </button>
+  <span class="topology-filter-count" id="topologyFilterCount"
+    >All nodes visible</span
+  >
+</div>
+
+<!-- Graph Container -->
+<div class="topology-workspace">
+  <div class="graph-wrapper">
+    <div id="graphContainer" class="graph-container"></div>
+
+    <!-- Controls Overlay -->
+    <div class="graph-controls">
+      <button onclick="refreshGraph()" title="Refresh" class="control-btn">
+        <i class="fas fa-sync"></i>
+      </button>
+      <button onclick="autoLayout()" title="Auto Layout" class="control-btn">
+        <i class="fas fa-arrows-alt"></i>
+      </button>
+      <button onclick="zoomIn()" title="Zoom In" class="control-btn">
+        <i class="fas fa-search-plus"></i>
+      </button>
+      <button onclick="zoomOut()" title="Zoom Out" class="control-btn">
+        <i class="fas fa-search-minus"></i>
+      </button>
+      <button onclick="resetZoom()" title="Reset View" class="control-btn">
+        <i class="fas fa-home"></i>
+      </button>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="graphLoading" class="graph-loading">
+      <div class="loading-spinner">
+        <div class="spinner"></div>
+        <div style="color: var(--text-secondary); margin-top: 15px">
+          Loading network topology...
+        </div>
+        <div
+          style="color: var(--text-secondary); font-size: 12px; margin-top: 5px"
+          id="loadingProgress"
+        >
+          Discovering devices...
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="topology-inspector" id="topologyInspector">
+    <div class="inspector-empty">
+      <i class="fas fa-crosshairs"></i><strong>Select a device</strong
+      ><span
+        >Click a node to inspect its identity, risk, exposure, and
+        placement.</span
+      >
+    </div>
+  </aside>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip" class="graph-tooltip" style="display: none">
+  <div class="tooltip-title" id="tooltipTitle">Device</div>
+  <div class="tooltip-details" id="tooltipDetails">Details</div>
+</div>
+
+<!-- D3.js and Force Graph Libraries -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+  // ============================================================
+  // CONFIGURATION
+  // ============================================================
+  const CONFIG = {
+    refreshInterval: 30000, // Auto-refresh every 30 seconds
+    nodeRadius: 22,
+    linkDistance: 150,
+    chargeStrength: -300,
+    zoomExtent: [0.5, 3],
+    colors: {
+      CRITICAL: "#ff4444",
+      HIGH: "#ff8800",
+      MEDIUM: "#ffcc00",
+      LOW: "#00ff88",
+      NONE: "#8899aa",
+    },
+  };
+
+  // ============================================================
+  // STATE
+  // ============================================================
+  let graphData = null;
+  let simulation = null;
+  let zoom = d3.zoom();
+  let svg = null;
+  let g = null;
+  let width = 0;
+  let height = 0;
+  let nodeElements = null;
+  let linkElements = null;
+  let labelElements = null;
+  let autoRefreshInterval = null;
+  let visibleGraphData = null;
+
+  // ============================================================
+  // INITIALIZATION
+  // ============================================================
+  document.addEventListener("DOMContentLoaded", function () {
+    initializeGraph();
+    startAutoRefresh();
+  });
+
+  function initializeGraph() {
+    // Set up container
+    const container = document.getElementById("graphContainer");
+    width = container.clientWidth || 800;
+    height = container.clientHeight || 600;
+
+    // Initial load
+    refreshGraph();
+
+    // Handle resize
+    window.addEventListener("resize", debounce(handleResize, 300));
+
+    // Keyboard shortcuts
+    document.addEventListener("keydown", handleKeyboard);
+  }
+
+  // ============================================================
+  // AUTO-REFRESH
+  // ============================================================
+  function startAutoRefresh() {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+    }
+    autoRefreshInterval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        refreshGraph();
+      }
+    }, CONFIG.refreshInterval);
+  }
+
+  function stopAutoRefresh() {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+      autoRefreshInterval = null;
+    }
+  }
+
+  // ============================================================
+  // REFRESH GRAPH
+  // ============================================================
+  function refreshGraph() {
+    showLoading();
+    updateLoadingProgress("Fetching network data...");
+
+    fetch("/api/network/graph")
+      .then((response) => {
+        if (!response.ok) throw new Error("Network request failed");
+        return response.json();
+      })
+      .then((data) => {
+        if (data.success) {
+          graphData = data.graph;
+          populateTopologyTypes(graphData.nodes || []);
+          updateStats(graphData);
+          applyTopologyFilters();
+          updateLoadingProgress("Complete!");
+          setTimeout(hideLoading, 500);
+          updateLiveStatus(true);
+        } else {
+          throw new Error(data.error || "Failed to load graph");
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        showError("Failed to load network topology: " + error.message);
+        hideLoading();
+        updateLiveStatus(false);
+      });
+  }
+
+  // ============================================================
+  // RENDER GRAPH
+  // ============================================================
+  function renderGraph(data) {
+    const container = document.getElementById("graphContainer");
+
+    // Clear previous graph
+    container.innerHTML = "";
+
+    // Get dimensions
+    width = container.clientWidth || 800;
+    height = container.clientHeight || 600;
+
+    // Create SVG
+    svg = d3
+      .select(container)
+      .append("svg")
+      .attr("width", width)
+      .attr("height", height)
+      .style("background", "var(--bg-primary)")
+      .style("border-radius", "8px")
+      .style("cursor", "grab");
+
+    // Add defs for gradients and filters
+    const defs = svg.append("defs");
+
+    // Add glow filter
+    const filter = defs
+      .append("filter")
+      .attr("id", "glow")
+      .attr("x", "-50%")
+      .attr("y", "-50%")
+      .attr("width", "200%")
+      .attr("height", "200%");
+
+    filter
+      .append("feGaussianBlur")
+      .attr("stdDeviation", "3")
+      .attr("result", "blur");
+
+    filter
+      .append("feMerge")
+      .selectAll("feMergeNode")
+      .data(["blur", "SourceGraphic"])
+      .enter()
+      .append("feMergeNode")
+      .attr("in", (d) => d);
+
+    // Setup zoom
+    zoom = d3
+      .zoom()
+      .extent([
+        [0, 0],
+        [width, height],
+      ])
+      .scaleExtent(CONFIG.zoomExtent)
+      .on("zoom", (event) => {
+        g.attr("transform", event.transform);
+      });
+
+    svg.call(zoom);
+
+    // Main group for graph elements
+    g = svg.append("g");
+
+    // Prepare data
+    const nodes = data.nodes || [];
+    const links = data.links || [];
+    visibleGraphData = data;
+
+    // Update connection count
+    document.getElementById("connectionCount").textContent = links.length;
+
+    if (nodes.length === 0) {
+      g.append("text")
+        .attr("x", width / 2)
+        .attr("y", height / 2)
+        .attr("text-anchor", "middle")
+        .style("fill", "#8899aa")
+        .style("font-size", "18px")
+        .text("No devices found in network");
+      return;
+    }
+
+    // Create forces with improved layout
+    simulation = d3
+      .forceSimulation(nodes)
+      .force(
+        "link",
+        d3
+          .forceLink(links)
+          .id((d) => d.id)
+          .distance((d) => {
+            // Adaptive distance based on node importance
+            const baseDistance = CONFIG.linkDistance;
+            const riskBonus =
+              d.source.risk_level === "CRITICAL"
+                ? 30
+                : d.source.risk_level === "HIGH"
+                  ? 20
+                  : 0;
+            return baseDistance + riskBonus;
+          }),
+      )
+      .force(
+        "charge",
+        d3.forceManyBody().strength((d) => {
+          // Stronger repulsion for critical nodes
+          return d.risk_level === "CRITICAL" ? -400 : CONFIG.chargeStrength;
+        }),
+      )
+      .force("center", d3.forceCenter(width / 2, height / 2))
+      .force(
+        "collision",
+        d3.forceCollide().radius((d) => (d.size || CONFIG.nodeRadius) + 10),
+      )
+      .force("x", d3.forceX(width / 2).strength(0.05))
+      .force("y", d3.forceY(height / 2).strength(0.05));
+
+    // Create links with gradients
+    const linkGroup = g.append("g").attr("class", "links");
+
+    linkElements = linkGroup
+      .selectAll("line")
+      .data(links)
+      .enter()
+      .append("line")
+      .attr("stroke", (d) => {
+        // Color links based on risk
+        const risk = Math.max(
+          getRiskValue(d.source.risk_level),
+          getRiskValue(d.target.risk_level),
+        );
+        return risk >= 4
+          ? "#ff444444"
+          : risk >= 3
+            ? "#ff880044"
+            : risk >= 2
+              ? "#ffcc0044"
+              : "#00ff8844";
+      })
+      .attr("stroke-width", (d) => {
+        // Thicker links for critical connections
+        const risk = Math.max(
+          getRiskValue(d.source.risk_level),
+          getRiskValue(d.target.risk_level),
+        );
+        return risk >= 4 ? 3 : risk >= 3 ? 2.5 : 2;
+      })
+      .attr("stroke-opacity", 0.6);
+
+    // Create nodes with enhanced styling
+    const nodeGroup = g.append("g").attr("class", "nodes");
+
+    nodeElements = nodeGroup
+      .selectAll("circle")
+      .data(nodes)
+      .enter()
+      .append("circle")
+      .attr("r", (d) => d.size || CONFIG.nodeRadius)
+      .attr("fill", (d) => d.color || CONFIG.colors.NONE)
+      .attr("stroke", (d) => {
+        // Add glow for critical devices
+        return d.risk_level === "CRITICAL"
+          ? "#ff4444"
+          : "rgba(255,255,255,0.1)";
+      })
+      .attr("stroke-width", (d) => (d.risk_level === "CRITICAL" ? 3 : 1))
+      .style("cursor", "pointer")
+      .style("filter", (d) =>
+        d.risk_level === "CRITICAL" ? "url(#glow)" : null,
+      )
+      .on("mouseover", showTooltip)
+      .on("mouseout", hideTooltip)
+      .on("click", (event, d) => {
+        showDeviceDetail(d.id);
+        showInspector(d);
+      })
+      .call(dragBehavior());
+
+    // Add icons/device type indicators
+    const iconGroup = g.append("g").attr("class", "icons");
+
+    iconGroup
+      .selectAll("text")
+      .data(nodes)
+      .enter()
+      .append("text")
+      .text((d) => getDeviceIcon(d.device_type))
+      .attr("font-size", "14px")
+      .attr("text-anchor", "middle")
+      .attr("dy", "4px")
+      .style("pointer-events", "none");
+
+    // Add labels with background
+    const labelGroup = g.append("g").attr("class", "labels");
+
+    labelElements = labelGroup
+      .selectAll("g")
+      .data(nodes)
+      .enter()
+      .append("g")
+      .style("pointer-events", "none");
+
+    // Label background
+    labelElements
+      .append("rect")
+      .attr("x", -20)
+      .attr("y", -8)
+      .attr("width", 40)
+      .attr("height", 16)
+      .attr("rx", 4)
+      .attr("fill", "rgba(10, 14, 23, 0.7)")
+      .attr("opacity", 0.8);
+
+    // Label text
+    labelElements
+      .append("text")
+      .text((d) => d.label || d.id)
+      .attr("font-size", "9px")
+      .attr("fill", "#e0e6ed")
+      .attr("text-anchor", "middle")
+      .attr("dy", "4px");
+
+    // Update positions on tick
+    simulation.on("tick", () => {
+      // Update links
+      linkElements
+        .attr("x1", (d) => d.source.x)
+        .attr("y1", (d) => d.source.y)
+        .attr("x2", (d) => d.target.x)
+        .attr("y2", (d) => d.target.y);
+
+      // Update nodes
+      nodeElements.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
+
+      // Update icons
+      iconGroup
+        .selectAll("text")
+        .attr("x", (d) => d.x)
+        .attr("y", (d) => d.y);
+
+      // Update labels
+      labelGroup
+        .selectAll("g")
+        .attr(
+          "transform",
+          (d) =>
+            `translate(${d.x},${d.y - (d.size || CONFIG.nodeRadius) - 15})`,
+        );
+    });
+
+    // Auto-layout after initial render
+    setTimeout(() => {
+      autoLayout();
+    }, 500);
+  }
+
+  // ============================================================
+  // DRAG BEHAVIOR
+  // ============================================================
+  function dragBehavior() {
+    return d3
+      .drag()
+      .on("start", (event, d) => {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+      })
+      .on("drag", (event, d) => {
+        d.fx = event.x;
+        d.fy = event.y;
+      })
+      .on("end", (event, d) => {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+      });
+  }
+
+  // ============================================================
+  // AUTO LAYOUT
+  // ============================================================
+  function autoLayout() {
+    if (!simulation) return;
+
+    // Reset positions and restart simulation
+    const nodes = simulation.nodes();
+    nodes.forEach((d) => {
+      d.fx = null;
+      d.fy = null;
+      // Add some randomness for better distribution
+      d.x += (Math.random() - 0.5) * 100;
+      d.y += (Math.random() - 0.5) * 100;
+    });
+
+    simulation.alpha(1).restart();
+
+    // Show toast notification
+    showToast("Auto Layout", "Reorganizing network topology...", "info", 2000);
+  }
+
+  // ============================================================
+  // TOOLTIP
+  // ============================================================
+  function showTooltip(event, d) {
+    const tooltip = document.getElementById("tooltip");
+    const title = document.getElementById("tooltipTitle");
+    const details = document.getElementById("tooltipDetails");
+
+    title.textContent = `${d.label || d.id}`;
+
+    const riskLevel = d.risk_level || "NONE";
+    const riskColor = CONFIG.colors[riskLevel] || CONFIG.colors.NONE;
+
+    let detailsHtml = `
+    <div><strong>Type:</strong> ${d.device_type || "Unknown"}</div>
+    <div><strong>Hostname:</strong> ${d.hostname || "-"}</div>
+    <div><strong>Risk Score:</strong> <span style="color: ${riskColor};">${d.risk_score || 0}</span></div>
+    <div><strong>Risk Level:</strong> <span class="risk-level ${riskLevel.toLowerCase()}">${riskLevel}</span></div>
+    <div><strong>CVEs:</strong> ${d.total_cves || 0}</div>
+    <div><strong>Critical CVEs:</strong> ${d.critical_cves || 0}</div>
+    <div style="margin-top: 5px; font-size: 11px; color: var(--text-secondary);">
+      <i class="fas fa-mouse-pointer"></i> Click for details
+    </div>
+  `;
+
+    details.innerHTML = detailsHtml;
+
+    // Position tooltip
+    let left = event.pageX + 15;
+    let top = event.pageY - 10;
+
+    // Keep tooltip in viewport
+    const tooltipRect = tooltip.getBoundingClientRect();
+    if (left + tooltipRect.width > window.innerWidth) {
+      left = event.pageX - tooltipRect.width - 15;
+    }
+    if (top + tooltipRect.height > window.innerHeight) {
+      top = window.innerHeight - tooltipRect.height - 10;
+    }
+
+    tooltip.style.display = "block";
+    tooltip.style.left = left + "px";
+    tooltip.style.top = top + "px";
+  }
+
+  function hideTooltip() {
+    document.getElementById("tooltip").style.display = "none";
+  }
+
+  // ============================================================
+  // DEVICE DETAIL
+  // ============================================================
+  function showDeviceDetail(deviceId) {
+    // Get device details and show modal
+    fetch(`/api/devices/${deviceId}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          const device = data.device;
+          const content = document.getElementById("deviceModalContent");
+
+          let html = `
+          <div class="device-detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">IP Address</span>
+              <span class="detail-value">${device.ip_address}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Hostname</span>
+              <span class="detail-value">${device.hostname || "-"}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Type</span>
+              <span class="detail-value">${device.device_type || "Unknown"}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">OS</span>
+              <span class="detail-value">${device.os || "Unknown"}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Risk Score</span>
+              <span class="detail-value" style="color: ${CONFIG.colors[device.risk_level] || CONFIG.colors.NONE};">${device.risk_score || 0}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Risk Level</span>
+              <span class="risk-badge ${device.risk_level?.toLowerCase() || "none"}">${device.risk_level || "NONE"}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Total CVEs</span>
+              <span class="detail-value">${device.total_cves || 0}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Critical CVEs</span>
+              <span class="detail-value" style="color: var(--critical);">${device.critical_cves || 0}</span>
+            </div>
+          </div>
+        `;
+
+          if (device.vulnerabilities && device.vulnerabilities.length > 0) {
+            html += `<h4 style="color: var(--accent); margin-top: 20px; margin-bottom: 10px;">🐛 Vulnerabilities</h4>`;
+            html += `<div class="vulnerability-list">`;
+            device.vulnerabilities.slice(0, 10).forEach((vuln) => {
+              const severityColor =
+                CONFIG.colors[vuln.severity] || CONFIG.colors.NONE;
+              html += `
+              <div class="vulnerability-item" style="border-left-color: ${severityColor};">
+                <div class="vuln-header">
+                  <span class="vuln-id">${vuln.cve_id}</span>
+                  <span class="vuln-severity" style="background: ${severityColor}22; color: ${severityColor};">
+                    CVSS ${vuln.cvss_score} (${vuln.severity})
+                  </span>
+                </div>
+                <div class="vuln-service">${vuln.service || ""}</div>
+                <div class="vuln-description">${vuln.description || ""}</div>
+              </div>
+            `;
+            });
+            if (device.vulnerabilities.length > 10) {
+              html += `<div class="more-vulns">... and ${device.vulnerabilities.length - 10} more</div>`;
+            }
+            html += `</div>`;
+          } else {
+            html += `<p class="no-vulnerabilities"><i class="fas fa-circle-check"></i> No vulnerabilities found</p>`;
+          }
+
+          content.innerHTML = html;
+          document.getElementById("deviceModal").style.display = "flex";
+        }
+      })
+      .catch((error) => {
+        document.getElementById("deviceModalContent").innerHTML =
+          '<div style="text-align: center; color: var(--critical); padding: 20px;"><i class="fas fa-circle-xmark"></i> Error loading device details</div>';
+      });
+  }
+
+  function populateTopologyTypes(nodes) {
+    const select = document.getElementById("topologyType");
+    const current = select.value;
+    const types = [
+      ...new Set(nodes.map((node) => node.device_type || "Unknown")),
+    ].sort();
+    select.innerHTML =
+      '<option value="all">All device types</option>' +
+      types
+        .map(
+          (type) =>
+            `<option value="${escapeTopology(type)}">${escapeTopology(type)}</option>`,
+        )
+        .join("");
+    select.value = types.includes(current) ? current : "all";
+  }
+
+  function applyTopologyFilters() {
+    if (!graphData) return;
+    const search = document
+      .getElementById("topologySearch")
+      .value.toLowerCase()
+      .trim();
+    const risk = document.getElementById("topologyRisk").value;
+    const type = document.getElementById("topologyType").value;
+    const nodes = (graphData.nodes || []).filter((node) => {
+      const text =
+        `${node.id || ""} ${node.label || ""} ${node.hostname || ""} ${node.device_type || ""}`.toLowerCase();
+      return (
+        (!search || text.includes(search)) &&
+        (risk === "all" || (node.risk_level || "NONE") === risk) &&
+        (type === "all" || (node.device_type || "Unknown") === type)
+      );
+    });
+    const ids = new Set(nodes.map((node) => String(node.id)));
+    const links = (graphData.links || []).filter(
+      (link) =>
+        ids.has(
+          String(
+            typeof link.source === "object" ? link.source.id : link.source,
+          ),
+        ) &&
+        ids.has(
+          String(
+            typeof link.target === "object" ? link.target.id : link.target,
+          ),
+        ),
+    );
+    document.getElementById("topologyFilterCount").textContent =
+      `${nodes.length} of ${(graphData.nodes || []).length} nodes visible`;
+    renderGraph({ ...graphData, nodes, links });
+  }
+
+  function clearTopologyFilters() {
+    document.getElementById("topologySearch").value = "";
+    document.getElementById("topologyRisk").value = "all";
+    document.getElementById("topologyType").value = "all";
+    applyTopologyFilters();
+  }
+  function escapeTopology(value) {
+    return String(value || "").replace(
+      /[&<>'"]/g,
+      (char) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "'": "&#39;",
+          '"': "&quot;",
+        })[char],
+    );
+  }
+  function showInspector(device) {
+    const inspector = document.getElementById("topologyInspector");
+    const risk = device.risk_level || "NONE";
+    inspector.innerHTML = `<div class="inspector-head"><span><i class="fas fa-microchip"></i> Device intelligence</span><button onclick="closeInspector()" title="Close"><i class="fas fa-xmark"></i></button></div><h2>${escapeTopology(device.label || device.id)}</h2><span class="inspector-risk ${risk.toLowerCase()}">${risk}</span><div class="inspector-grid"><div><small>IP address</small><strong>${escapeTopology(device.ip || device.id)}</strong></div><div><small>Type</small><strong>${escapeTopology(device.device_type || "Unknown")}</strong></div><div><small>Risk score</small><strong>${Number(device.risk_score || 0).toFixed(1)}</strong></div><div><small>CVEs</small><strong>${device.total_cves || 0}</strong></div><div><small>Hostname</small><strong>${escapeTopology(device.hostname || "Unresolved")}</strong></div><div><small>Location</small><strong>${escapeTopology(device.floor || device.zone || "Unassigned")}</strong></div></div><button class="btn btn-primary btn-sm inspector-detail" onclick="showDeviceDetail(${device.id})"><i class="fas fa-arrow-up-right-from-square"></i> Open full device record</button>`;
+    inspector.classList.add("open");
+  }
+  function closeInspector() {
+    document.getElementById("topologyInspector").classList.remove("open");
+  }
+
+  // ============================================================
+  // UPDATE STATS
+  // ============================================================
+  function updateStats(graph) {
+    const nodes = graph.nodes || [];
+    const metadata = graph.metadata || {};
+    const riskSummary = metadata.risk_summary || {};
+
+    document.getElementById("graphNodes").textContent = nodes.length;
+    document.getElementById("graphCritical").textContent =
+      riskSummary.CRITICAL || 0;
+    document.getElementById("graphHigh").textContent = riskSummary.HIGH || 0;
+    document.getElementById("graphMedium").textContent =
+      riskSummary.MEDIUM || 0;
+    document.getElementById("graphSecure").textContent =
+      (riskSummary.LOW || 0) + (riskSummary.NONE || 0);
+  }
+
+  // ============================================================
+  // ZOOM CONTROLS
+  // ============================================================
+  function zoomIn() {
+    if (!svg) return;
+    svg.transition().call(zoom.scaleBy, 1.3);
+  }
+
+  function zoomOut() {
+    if (!svg) return;
+    svg.transition().call(zoom.scaleBy, 0.7);
+  }
+
+  function resetZoom() {
+    if (!svg) return;
+    svg.transition().call(zoom.transform, d3.zoomIdentity);
+  }
+
+  // ============================================================
+  // EXPORT GRAPH
+  // ============================================================
+  function exportGraph() {
+    if (!svg) {
+      showToast("Error", "No graph to export", "error");
+      return;
+    }
+
+    // Get SVG data
+    const svgElement = svg.node();
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(svgElement);
+
+    // Create canvas for PNG export
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+
+    // Set canvas dimensions
+    canvas.width = width;
+    canvas.height = height;
+
+    // Create image from SVG
+    const image = new Image();
+    const svgBlob = new Blob([svgString], {
+      type: "image/svg+xml;charset=utf-8",
+    });
+    const url = URL.createObjectURL(svgBlob);
+
+    image.onload = function () {
+      context.drawImage(image, 0, 0);
+      URL.revokeObjectURL(url);
+
+      // Download PNG
+      const link = document.createElement("a");
+      link.download = `network_topology_${new Date().toISOString().split("T")[0]}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      showToast("Export", "Graph exported as PNG", "success", 2000);
+    };
+
+    image.src = url;
+  }
+
+  // ============================================================
+  // LOADING STATES
+  // ============================================================
+  function showLoading() {
+    const overlay = document.getElementById("graphLoading");
+    overlay.innerHTML =
+      '<div class="loading-spinner"><div class="spinner"></div><div style="color: var(--text-secondary); margin-top: 15px">Loading network topology...</div><div style="color: var(--text-secondary); font-size: 12px; margin-top: 5px" id="loadingProgress">Discovering devices...</div></div>';
+    overlay.style.display = "flex";
+  }
+
+  function hideLoading() {
+    document.getElementById("graphLoading").style.display = "none";
+  }
+
+  function updateLoadingProgress(message) {
+    const progress = document.getElementById("loadingProgress");
+    if (progress) progress.textContent = message;
+  }
+
+  function showError(message) {
+    document.getElementById("graphLoading").innerHTML = `
+    <div class="error-message">
+      <div style="font-size: 40px; margin-bottom: 10px;"><i class="fas fa-circle-xmark"></i></div>
+      <div style="color: var(--text-secondary);">${message}</div>
+      <button onclick="refreshGraph()" class="btn btn-primary btn-sm" style="margin-top: 15px;">
+        <i class="fas fa-sync"></i> Retry
+      </button>
+    </div>
+  `;
+  }
+
+  function updateLiveStatus(connected) {
+    const status = document.getElementById("liveStatus");
+    if (connected) {
+      status.innerHTML =
+        '<span class="status-badge status-fresh"><i class="fas fa-circle"></i> Live</span>';
+    } else {
+      status.innerHTML =
+        '<span class="status-badge status-error"><i class="fas fa-circle-xmark"></i> Disconnected</span>';
+    }
+  }
+
+  // ============================================================
+  // UTILITY FUNCTIONS
+  // ============================================================
+  function getDeviceIcon(type) {
+    const icons = {
+      Server: "SRV",
+      Workstation: "LAP",
+      Network: "NET",
+      IoT: "IOT",
+      Printer: "PRN",
+      Camera: "CAM",
+      Mobile: "MOB",
+      Router: "RTR",
+      Switch: "SWT",
+      Firewall: "FW",
+      Database: "DB",
+      Web: "WEB",
+    };
+    return icons[type] || "DEV";
+  }
+
+  function getRiskValue(riskLevel) {
+    const values = {
+      CRITICAL: 4,
+      HIGH: 3,
+      MEDIUM: 2,
+      LOW: 1,
+      NONE: 0,
+    };
+    return values[riskLevel] || 0;
+  }
+
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  function handleResize() {
+    if (graphData) {
+      renderGraph(graphData);
+    }
+  }
+
+  function handleKeyboard(e) {
+    if (e.key === "+" || e.key === "=") {
+      e.preventDefault();
+      zoomIn();
+    }
+    if (e.key === "-") {
+      e.preventDefault();
+      zoomOut();
+    }
+    if (e.key === "r" || e.key === "R") {
+      if (!e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        resetZoom();
+      }
+    }
+    if (e.key === "l" || e.key === "L") {
+      e.preventDefault();
+      autoLayout();
+    }
+    if (e.key === "Escape") {
+      document.getElementById("tooltip").style.display = "none";
+    }
+  }
+
+  function showToast(title, message, type = "info", duration = 3000) {
+    const toast = document.getElementById("toast") || createToast();
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+    <span><strong>${title}</strong> ${message}</span>
+    <button onclick="this.parentElement.style.display='none'">×</button>
+  `;
+    toast.style.display = "flex";
+
+    if (duration > 0) {
+      setTimeout(() => {
+        toast.style.display = "none";
+      }, duration);
+    }
+  }
+
+  function createToast() {
+    const toast = document.createElement("div");
+    toast.id = "toast";
+    toast.className = "toast";
+    toast.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px 20px;
+    z-index: 9999;
+    max-width: 400px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    display: none;
+    gap: 15px;
+    align-items: center;
+  `;
+    document.body.appendChild(toast);
+    return toast;
+  }
+</script>
+
+<!-- CSS Styles -->
+<style>
+  .topology-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+    padding: 11px 13px;
+    margin-bottom: 14px;
+    background: linear-gradient(105deg, #0d2130, #091522);
+    border: 1px solid #24516e;
+    border-radius: 7px;
+    box-shadow:
+      inset 0 1px #fff1,
+      0 0 22px #20d7f512;
+  }
+  .topology-toolbar select,
+  .topology-search {
+    height: 34px;
+    background: #071421e8;
+    border: 1px solid #23516d;
+    color: var(--text-primary);
+    border-radius: 4px;
+  }
+  .topology-toolbar select {
+    padding: 0 9px;
+  }
+  .topology-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    flex: 1;
+    min-width: 230px;
+    color: var(--accent);
+  }
+  .topology-search input {
+    border: 0 !important;
+    outline: 0;
+    padding: 0;
+    width: 100%;
+    height: 30px;
+    background: transparent !important;
+  }
+  .topology-filter-count {
+    color: var(--text-secondary);
+    font: 11px monospace;
+    margin-left: auto;
+  }
+  .topology-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 285px;
+    gap: 14px;
+    align-items: stretch;
+  }
+  .topology-inspector {
+    background: linear-gradient(145deg, #0e2030, #091522);
+    border: 1px solid #28536b;
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 650px;
+    box-shadow: 0 0 22px #20d7f512;
+  }
+  .topology-inspector.open {
+    border-color: #2b7182;
+    box-shadow: 0 0 28px #20d7f526;
+  }
+  .inspector-empty {
+    min-height: 610px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 9px;
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+  .inspector-empty i {
+    color: var(--accent);
+    font-size: 34px;
+    filter: drop-shadow(0 0 10px #20d7f577);
+  }
+  .inspector-empty strong {
+    color: var(--text-primary);
+    font-size: 14px;
+  }
+  .inspector-head {
+    display: flex;
+    justify-content: space-between;
+    color: var(--accent);
+    font-size: 12px;
+    margin-bottom: 16px;
+  }
+  .inspector-head button {
+    background: transparent;
+    border: 0;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+  .topology-inspector h2 {
+    font-size: 17px;
+    margin-bottom: 9px;
+    overflow-wrap: anywhere;
+  }
+  .inspector-risk {
+    display: inline-block;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    background: #334455;
+    color: var(--text-secondary);
+  }
+  .inspector-risk.critical {
+    background: #ff557622;
+    color: var(--critical);
+  }
+  .inspector-risk.high {
+    background: #ff9b5422;
+    color: var(--high);
+  }
+  .inspector-risk.medium {
+    background: #f5d26722;
+    color: var(--medium);
+  }
+  .inspector-risk.low {
+    background: #63f5b122;
+    color: var(--low);
+  }
+  .inspector-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .inspector-grid div {
+    border-bottom: 1px solid #214157;
+    padding-bottom: 8px;
+    min-width: 0;
+  }
+  .inspector-grid small {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 10px;
+    margin-bottom: 4px;
+  }
+  .inspector-grid strong {
+    display: block;
+    color: var(--text-primary);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+  .inspector-detail {
+    width: 100%;
+    margin-top: 20px;
+  }
+  /* ==================== Graph Container ==================== */
+  .graph-wrapper {
+    position: relative;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+    height: 650px;
+  }
+  @media (max-width: 1050px) {
+    .topology-workspace {
+      grid-template-columns: 1fr;
+    }
+    .topology-inspector {
+      min-height: 0;
+    }
+    .inspector-empty {
+      min-height: 150px;
+    }
+  }
+  @media (max-width: 650px) {
+    .topology-filter-count {
+      width: 100%;
+      margin-left: 0;
+    }
+  }
+
+  .graph-container {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  /* ==================== Stats Grid ==================== */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: transform 0.2s;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .stat-card.critical {
+    border-left: 3px solid #ff4444;
+  }
+  .stat-card.high {
+    border-left: 3px solid #ff8800;
+  }
+  .stat-card.medium {
+    border-left: 3px solid #ffcc00;
+  }
+  .stat-card.low {
+    border-left: 3px solid #00ff88;
+  }
+
+  .stat-icon {
+    font-size: 28px;
+  }
+
+  .stat-content {
+    flex: 1;
+  }
+
+  .stat-number {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--text-primary);
+  }
+
+  .stat-card.critical .stat-number {
+    color: #ff4444;
+  }
+  .stat-card.high .stat-number {
+    color: #ff8800;
+  }
+  .stat-card.medium .stat-number {
+    color: #ffcc00;
+  }
+  .stat-card.low .stat-number {
+    color: #00ff88;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  /* ==================== Legend ==================== */
+  .legend-container {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    padding: 10px 15px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    align-items: center;
+  }
+
+  .legend-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin-right: 3px;
+  }
+
+  .legend-dot.critical {
+    background: #ff4444;
+  }
+  .legend-dot.high {
+    background: #ff8800;
+  }
+  .legend-dot.medium {
+    background: #ffcc00;
+  }
+  .legend-dot.low {
+    background: #00ff88;
+  }
+  .legend-dot.none {
+    background: #8899aa;
+  }
+
+  /* ==================== Graph Controls ==================== */
+  .graph-controls {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    z-index: 10;
+  }
+
+  .control-btn {
+    width: 36px;
+    height: 36px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .control-btn:hover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-color: var(--accent);
+  }
+
+  /* ==================== Loading ==================== */
+  .graph-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(10, 14, 23, 0.85);
+    border-radius: 10px;
+    z-index: 5;
+  }
+
+  .loading-spinner {
+    text-align: center;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* ==================== Tooltip ==================== */
+  .graph-tooltip {
+    position: fixed;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    z-index: 3000;
+    max-width: 280px;
+    pointer-events: none;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  }
+
+  .tooltip-title {
+    font-weight: bold;
+    color: var(--accent);
+    font-size: 14px;
+    margin-bottom: 5px;
+  }
+
+  .tooltip-details {
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .tooltip-details .risk-level {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 10px;
+  }
+
+  .tooltip-details .risk-level.critical {
+    background: #ff444422;
+    color: #ff4444;
+  }
+  .tooltip-details .risk-level.high {
+    background: #ff880022;
+    color: #ff8800;
+  }
+  .tooltip-details .risk-level.medium {
+    background: #ffcc0022;
+    color: #ffcc00;
+  }
+  .tooltip-details .risk-level.low {
+    background: #00ff8822;
+    color: #00ff88;
+  }
+  .tooltip-details .risk-level.none {
+    background: #8899aa22;
+    color: #8899aa;
+  }
+
+  /* ==================== Modal ==================== */
+  #deviceModal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 4000;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .device-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .detail-item {
+    padding: 8px;
+    background: var(--bg-primary);
+    border-radius: 6px;
+  }
+
+  .detail-label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+  }
+
+  .detail-value {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .risk-badge {
+    display: inline-block;
+    padding: 2px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+  }
+
+  .risk-badge.critical {
+    background: #ff444422;
+    color: #ff4444;
+  }
+  .risk-badge.high {
+    background: #ff880022;
+    color: #ff8800;
+  }
+  .risk-badge.medium {
+    background: #ffcc0022;
+    color: #ffcc00;
+  }
+  .risk-badge.low {
+    background: #00ff8822;
+    color: #00ff88;
+  }
+  .risk-badge.none {
+    background: #8899aa22;
+    color: #8899aa;
+  }
+
+  .vulnerability-list {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .vulnerability-item {
+    padding: 10px 15px;
+    background: var(--bg-primary);
+    margin-bottom: 8px;
+    border-radius: 6px;
+    border-left: 3px solid var(--border-color);
+  }
+
+  .vuln-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .vuln-id {
+    font-weight: bold;
+    color: var(--accent);
+    font-size: 13px;
+  }
+
+  .vuln-severity {
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: bold;
+  }
+
+  .vuln-service {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .vuln-description {
+    font-size: 13px;
+    color: var(--text-primary);
+    margin-top: 4px;
+  }
+
+  .no-vulnerabilities {
+    color: #00ff88;
+    padding: 20px;
+    text-align: center;
+    background: var(--bg-primary);
+    border-radius: 6px;
+  }
+
+  .more-vulns {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 12px;
+    padding: 8px;
+  }
+
+  /* ==================== Status Badges ==================== */
+  .status-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .status-badge.status-fresh {
+    background: #00ff8822;
+    color: #00ff88;
+  }
+
+  .status-badge.status-error {
+    background: #ff444422;
+    color: #ff4444;
+  }
+
+  /* ==================== Responsive ==================== */
+  @media (max-width: 768px) {
+    .stats-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .graph-wrapper {
+      height: 400px;
+      padding: 10px;
+    }
+
+    .graph-controls {
+      top: 15px;
+      right: 15px;
+    }
+
+    .control-btn {
+      width: 30px;
+      height: 30px;
+      font-size: 12px;
+    }
+
+    .device-detail-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .legend-container {
+      font-size: 12px;
+      gap: 10px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .stats-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .graph-wrapper {
+      height: 300px;
+    }
+
+    .tooltip-title {
+      font-size: 12px;
+    }
+
+    .tooltip-details {
+      font-size: 11px;
+    }
+  }
+</style>
+
+<!-- Device Detail Modal -->
+<div id="deviceModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 style="color: var(--accent)">Device Details</h2>
+      <button
+        onclick="document.getElementById('deviceModal').style.display = 'none'"
+        class="modal-close"
+      >
+        ✕
+      </button>
+    </div>
+    <div id="deviceModalContent"></div>
+  </div>
+</div>
+
+<style>
+  .modal-content {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 30px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 24px;
+    cursor: pointer;
+  }
+
+  #deviceModal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 4000;
+    justify-content: center;
+    align-items: center;
+  }
+</style>
+
+<script>
+  // Close modal on outside click
+  document
+    .getElementById("deviceModal")
+    .addEventListener("click", function (e) {
+      if (e.target === this) this.style.display = "none";
+    });
+
+  // Close modal on Escape
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+      document.getElementById("deviceModal").style.display = "none";
+    }
+  });
+</script>
+{% endblock %}

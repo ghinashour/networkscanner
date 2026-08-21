@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: sentinel-ai-network-scanner
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DB_PATH
+        value: /var/lib/networkscanner/network_scanner.db
+      - key: MAIL_USE_TLS
+        value: "true"
+    disk:
+      name: sentinel-ai-data
+      mountPath: /var/lib/networkscanner
+      sizeGB: 1

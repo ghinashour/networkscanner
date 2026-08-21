@@ -1,0 +1,1783 @@
+{% extends "base.html" %} {% block content %}
+<style>
+  .map-intro {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding: 20px 22px;
+    background: linear-gradient(110deg, #10283b, #0b1725 72%);
+    border: 1px solid #285678;
+    border-radius: 8px;
+    box-shadow:
+      0 0 30px #20d7f51c,
+      inset 0 1px #ffffff0c;
+    position: relative;
+    overflow: hidden;
+  }
+  .map-intro::after {
+    content: "OPS / CAMPUS-01";
+    position: absolute;
+    right: 20px;
+    bottom: 10px;
+    color: #8ab7c122;
+    font: 10px monospace;
+    letter-spacing: 0.18em;
+  }
+  .map-intro h1 {
+    margin-bottom: 6px;
+    letter-spacing: 0.02em;
+  }
+  .map-intro h1 i {
+    color: var(--accent);
+    margin-right: 8px;
+  }
+  .map-intro p {
+    color: var(--text-secondary);
+    font-size: 13px;
+    max-width: 720px;
+    line-height: 1.55;
+  }
+  .map-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 18px;
+  }
+  .map-canvas,
+  .location-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+  }
+  .map-canvas {
+    min-height: 560px;
+    padding: 20px;
+    background-image:
+      linear-gradient(#1e3a5f33 1px, transparent 1px),
+      linear-gradient(90deg, #1e3a5f33 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .zone-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 14px;
+    align-items: start;
+  }
+  .zone {
+    background: #0a0e17e8;
+    border: 1px solid #315477;
+    border-top: 3px solid var(--accent);
+    border-radius: 7px;
+    padding: 13px;
+    min-height: 130px;
+  }
+  .zone.unassigned {
+    border-top-color: var(--high);
+  }
+  .zone-title {
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .zone-meta {
+    color: var(--text-secondary);
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+  .device-chip {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    background: #132235;
+    border: 1px solid #244564;
+    border-radius: 5px;
+    padding: 8px;
+    margin-top: 7px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .device-chip:hover {
+    border-color: var(--accent);
+  }
+  .device-chip small {
+    display: block;
+    color: var(--text-secondary);
+    margin-top: 3px;
+  }
+  .risk-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--low);
+    flex: 0 0 auto;
+  }
+  .risk-dot.HIGH {
+    background: var(--high);
+  }
+  .risk-dot.CRITICAL {
+    background: var(--critical);
+  }
+  .risk-dot.MEDIUM {
+    background: var(--medium);
+  }
+  .location-panel {
+    padding: 18px;
+  }
+  .location-panel h3 {
+    margin-bottom: 5px;
+  }
+  .location-panel p {
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-bottom: 16px;
+  }
+  .location-panel label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 11px;
+    margin: 11px 0 5px;
+  }
+  .location-panel input,
+  .location-panel textarea {
+    width: 100%;
+    background: #09121f;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+    padding: 9px;
+  }
+  .location-panel textarea {
+    resize: vertical;
+    min-height: 65px;
+  }
+  .location-panel button {
+    width: 100%;
+    margin-top: 16px;
+  }
+  .empty {
+    color: var(--text-secondary);
+    font-size: 12px;
+    padding: 12px 0;
+  }
+  .campus-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 18px;
+  }
+  .campus-shell,
+  .placement-shell {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 18px;
+  }
+  .floor-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .floor-tab {
+    border: 1px solid var(--border-color);
+    background: #0b1624;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    padding: 9px 12px;
+    cursor: pointer;
+  }
+  .floor-tab.active,
+  .floor-tab:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: #10283b;
+  }
+  .floor-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: baseline;
+    margin-bottom: 16px;
+  }
+  .floor-heading small {
+    color: var(--text-secondary);
+  }
+  .floorplan {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-auto-rows: 72px;
+    gap: 7px;
+    padding: 14px;
+    min-height: 390px;
+    background: #080f1a;
+    border: 1px solid #294663;
+    border-radius: 6px;
+  }
+  .room {
+    border: 1px solid #416583;
+    border-radius: 5px;
+    background: #11283a;
+    color: var(--text-primary);
+    padding: 9px;
+    cursor: pointer;
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+  }
+  .room:hover,
+  .room.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+    background: #153d54;
+  }
+  .room.common {
+    background: #1d2d35;
+  }
+  .room.service {
+    background: #352b20;
+    border-color: #80602e;
+  }
+  .room strong {
+    display: block;
+    font-size: 12px;
+  }
+  .room small {
+    color: var(--text-secondary);
+    font-size: 10px;
+    display: block;
+    margin-top: 5px;
+  }
+  .room-count {
+    position: absolute;
+    right: 7px;
+    top: 7px;
+    color: var(--accent2);
+    font-size: 11px;
+  }
+  .placement-shell h3 {
+    margin-bottom: 6px;
+  }
+  .placement-shell p {
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.45;
+    margin-bottom: 15px;
+  }
+  .placement-shell label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 11px;
+    margin: 11px 0 5px;
+  }
+  .placement-shell select,
+  .placement-shell input {
+    width: 100%;
+    background: #09121f;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+    padding: 9px;
+  }
+  .placement-shell button {
+    width: 100%;
+    margin-top: 16px;
+  }
+  .campus-legend {
+    color: var(--text-secondary);
+    font-size: 11px;
+    margin-top: 12px;
+  }
+  .campus-legend span {
+    display: inline-block;
+    padding: 4px 7px;
+    border: 1px solid #416583;
+    margin-right: 5px;
+    border-radius: 3px;
+  }
+  .campus-legend .legend-service {
+    border-color: #80602e;
+  }
+  .campus-legend .legend-common {
+    border-color: #526b72;
+  }
+  .room-entry {
+    margin-top: 16px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 14px;
+  }
+  .room-entry button {
+    width: 100%;
+  }
+  .room-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: #02060dcc;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .room-modal.open {
+    display: flex;
+  }
+  .room-window {
+    width: min(980px, 100%);
+    max-height: calc(100vh - 48px);
+    overflow: auto;
+    background: #0a121e;
+    border: 1px solid #3e6687;
+    border-radius: 8px;
+    box-shadow: 0 24px 80px #000b;
+  }
+  .room-window-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    align-items: center;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .room-window-head small {
+    color: var(--text-secondary);
+    display: block;
+    margin-top: 4px;
+  }
+  .close-room {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+    padding: 8px 11px;
+    cursor: pointer;
+  }
+  .interior {
+    margin: 20px;
+    min-height: 440px;
+    position: relative;
+    overflow: hidden;
+    border: 12px solid #1e3444;
+    background: #172532;
+    box-shadow: inset 0 0 0 2px #6b7f87;
+  }
+  #room3dInterior {
+    margin: 20px;
+    height: 500px;
+    position: relative;
+    overflow: hidden;
+    border: 10px solid #1e3444;
+    background: #07111d;
+    box-shadow: inset 0 0 0 2px #6b7f87;
+  }
+  #room3dInterior canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  #room3dInterior canvas:active {
+    cursor: grabbing;
+  }
+  .room-window .interior {
+    display: none;
+  }
+  .interior:before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.32;
+    background-image:
+      linear-gradient(90deg, #6c8b9222 1px, transparent 1px),
+      linear-gradient(#6c8b9222 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .wall-label {
+    position: absolute;
+    top: 12px;
+    left: 18px;
+    color: #a8c4c7;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .door {
+    position: absolute;
+    bottom: -12px;
+    left: 48%;
+    width: 92px;
+    height: 25px;
+    background: #b8844e;
+    border: 2px solid #e0af70;
+    color: #24160e;
+    font-size: 10px;
+    text-align: center;
+    padding-top: 4px;
+    z-index: 3;
+  }
+  .furniture {
+    position: absolute;
+    z-index: 2;
+    border: 1px solid #78909a;
+    background: #526c73;
+    color: #d7e7e5;
+    border-radius: 3px;
+    font-size: 10px;
+    text-align: center;
+    padding: 7px 4px;
+  }
+  .furniture.desk {
+    width: 112px;
+    height: 42px;
+  }
+  .furniture.table {
+    width: 180px;
+    height: 58px;
+    border-radius: 30px;
+    background: #6d5b50;
+  }
+  .furniture.sofa {
+    width: 150px;
+    height: 42px;
+    background: #465f72;
+  }
+  .furniture.counter {
+    width: 220px;
+    height: 38px;
+    background: #6e6148;
+  }
+  .interior-device {
+    position: absolute;
+    z-index: 4;
+    width: 150px;
+    padding: 9px;
+    background: #092436;
+    border: 1px solid var(--accent);
+    border-radius: 5px;
+    color: #e5f6f4;
+    cursor: pointer;
+    box-shadow: 0 5px 15px #0008;
+  }
+  .interior-device:hover {
+    background: #12415a;
+    transform: translateY(-2px);
+  }
+  .interior-device small {
+    display: block;
+    color: #8eb6bb;
+    margin-top: 4px;
+    font-size: 10px;
+  }
+  .room-footer {
+    padding: 0 20px 20px;
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+  .legacy-location {
+    display: none;
+  }
+  .campus-layout {
+    display: none;
+  }
+  .three-shell {
+    background: #07111d;
+    border: 1px solid #315477;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+  }
+  .three-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #284661;
+    background: #0a1725;
+  }
+  .three-toolbar .toolbar-title {
+    margin-right: auto;
+  }
+  .three-toolbar small {
+    color: var(--text-secondary);
+    display: block;
+    margin-top: 3px;
+  }
+  .three-toolbar button,
+  .three-toolbar select {
+    border: 1px solid #315477;
+    background: #102337;
+    color: var(--text-primary);
+    border-radius: 4px;
+    padding: 8px 10px;
+    cursor: pointer;
+  }
+  .three-toolbar button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  #campus3d {
+    height: 650px;
+    width: 100%;
+    display: block;
+    cursor: grab;
+  }
+  #campus3d:active {
+    cursor: grabbing;
+  }
+  .scene-status {
+    position: absolute;
+    left: 18px;
+    bottom: 18px;
+    padding: 9px 12px;
+    background: #07111de8;
+    border: 1px solid #315477;
+    border-radius: 5px;
+    color: #b4cbd1;
+    font-size: 12px;
+    pointer-events: none;
+  }
+  .scene-legend {
+    position: absolute;
+    right: 18px;
+    bottom: 18px;
+    padding: 10px 12px;
+    background: #07111de8;
+    border: 1px solid #315477;
+    border-radius: 5px;
+    color: #b4cbd1;
+    font-size: 11px;
+  }
+  .scene-legend i {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+  }
+  .legend-safe {
+    background: #36d399;
+  }
+  .legend-risk {
+    background: #ff8b4d;
+  }
+  .legend-critical {
+    background: #ff496c;
+  }
+  .scene-info {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 14px;
+  }
+  .scene-info article {
+    padding: 13px 15px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+  }
+  .scene-info b {
+    display: block;
+    margin-bottom: 4px;
+  }
+  .scene-info span {
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+  @media (max-width: 900px) {
+    #campus3d {
+      height: 500px;
+    }
+    .scene-info {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 900px) {
+    .campus-layout {
+      grid-template-columns: 1fr;
+    }
+    .floorplan {
+      grid-auto-rows: 64px;
+    }
+  }
+  @media (max-width: 900px) {
+    .map-layout {
+      grid-template-columns: 1fr;
+    }
+    .map-canvas {
+      min-height: 0;
+    }
+    .map-intro {
+      display: block;
+    }
+  }
+</style>
+
+<div class="map-intro">
+  <div>
+    <h1><i class="fas fa-map-marked-alt"></i> Device Map</h1>
+    <p>
+      Operational asset placement by site, building, floor, and zone. This view
+      is deliberately separate from the ML training dataset and does not infer
+      physical coordinates from private IP addresses.
+    </p>
+  </div>
+  <button class="btn btn-primary btn-sm" onclick="loadLocations()">
+    <i class="fas fa-sync"></i> Refresh
+  </button>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-server"></i></div>
+    <div class="stat-content">
+      <div class="stat-number" id="totalDevices">-</div>
+      <div class="stat-label">Tracked Devices</div>
+    </div>
+  </div>
+  <div class="stat-card critical">
+    <div class="stat-icon"><i class="fas fa-exclamation-circle"></i></div>
+    <div class="stat-content">
+      <div class="stat-number" id="highRisk">-</div>
+      <div class="stat-label">High / Critical</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-layer-group"></i></div>
+    <div class="stat-content">
+      <div class="stat-number" id="zoneCount">-</div>
+      <div class="stat-label">Operational Zones</div>
+    </div>
+  </div>
+  <div class="stat-card medium">
+    <div class="stat-icon"><i class="fas fa-question-circle"></i></div>
+    <div class="stat-content">
+      <div class="stat-number" id="unassigned">-</div>
+      <div class="stat-label">Unassigned</div>
+    </div>
+  </div>
+</div>
+
+<section class="three-shell">
+  <div class="three-toolbar">
+    <div class="toolbar-title">
+      <strong><i class="fas fa-cube"></i> University Security Model</strong
+      ><small>Interactive 3D asset and room intelligence view</small>
+    </div>
+    <select id="sceneFloor">
+      <option value="all">All floors</option>
+    </select>
+    <button id="sceneReset"><i class="fas fa-expand"></i> Overview</button>
+    <button id="sceneEnter" disabled>
+      <i class="fas fa-door-open"></i> Enter room
+    </button>
+  </div>
+  <div id="campus3d"></div>
+  <div class="scene-status" id="sceneStatus">Loading university model...</div>
+  <div class="scene-legend">
+    <i class="legend-safe"></i> Normal &nbsp;
+    <i class="legend-risk"></i> Elevated &nbsp;
+    <i class="legend-critical"></i> Critical
+  </div>
+</section>
+<div class="scene-info">
+  <article>
+    <b id="sceneSelection">No selection</b><span>Selected space</span>
+  </article>
+  <article>
+    <b id="sceneDevices">0 devices</b><span>Assets in selected room</span>
+  </article>
+  <article>
+    <b id="sceneMode">Orbit view</b
+    ><span>Use mouse to rotate, zoom, and pan</span>
+  </article>
+</div>
+
+<div class="campus-layout">
+  <section class="campus-shell">
+    <div class="floor-tabs" id="floorTabs"></div>
+    <div class="floor-heading">
+      <h2 id="floorName">Ground Floor</h2>
+      <small id="floorSummary">Cafeteria and student services</small>
+    </div>
+    <div class="floorplan" id="floorplan"></div>
+    <div class="campus-legend">
+      <span>Teaching / office</span
+      ><span class="legend-common">Common area</span
+      ><span class="legend-service">Service area</span>
+    </div>
+  </section>
+  <aside class="placement-shell">
+    <h3 id="roomTitle">Select a room</h3>
+    <p>
+      Choose a room on the floorplan, then select a discovered device to place
+      it there. This simulates the university building inventory.
+    </p>
+    <label for="campusDevice">Device</label>
+    <select id="campusDevice">
+      <option value="">Select a device</option>
+    </select>
+    <label for="campusRoom">Room</label
+    ><input
+      id="campusRoom"
+      readonly
+      placeholder="Click a room on the floorplan"
+    />
+    <label for="campusRack">Rack or desk</label
+    ><input id="campusRack" placeholder="Optional asset position" />
+    <button class="btn btn-success" id="placeDevice">
+      <i class="fas fa-location-arrow"></i> Place Device
+    </button>
+    <div class="empty" id="placementStatus">No room selected.</div>
+    <div class="room-entry">
+      <button class="btn btn-primary" id="enterRoom" disabled>
+        <i class="fas fa-door-open"></i> Enter Selected Room
+      </button>
+    </div>
+  </aside>
+</div>
+
+<div
+  class="room-modal"
+  id="roomModal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="roomModalTitle"
+>
+  <div class="room-window">
+    <div class="room-window-head">
+      <div>
+        <h2 id="roomModalTitle">Room</h2>
+        <small id="roomModalSubtitle">Interactive room view</small>
+      </div>
+      <button class="close-room" id="closeRoom">
+        <i class="fas fa-times"></i> Exit Room
+      </button>
+    </div>
+    <div id="room3dInterior"></div>
+    <div class="interior" id="roomInterior">
+      <span class="wall-label">Interior view</span
+      ><span class="door">DOOR</span>
+    </div>
+    <div class="room-footer">
+      Prototype view: furniture and room geometry are simulated. Device cards
+      represent the assets assigned to this room.
+    </div>
+  </div>
+</div>
+
+<div class="map-layout legacy-location">
+  <section class="map-canvas">
+    <div id="zoneGrid" class="zone-grid">
+      <div class="empty">Loading device locations...</div>
+    </div>
+  </section>
+  <aside class="location-panel">
+    <h3 id="selectedTitle">Assign a device</h3>
+    <p>Choose a device on the map to edit its operational location.</p>
+    {% if user_role in ['administrator', 'manager'] %}
+    <form id="locationForm">
+      <input type="hidden" id="deviceId" />
+      <label for="site">Site</label><input id="site" value="Primary Site" />
+      <label for="building">Building</label
+      ><input id="building" placeholder="HQ" /> <label for="floor">Floor</label
+      ><input id="floor" placeholder="2nd Floor" />
+      <label for="zone">Zone</label
+      ><input id="zone" placeholder="Server Room A" />
+      <label for="rack">Rack</label><input id="rack" placeholder="Rack 04" />
+      <label for="switchPort">Switch Port</label
+      ><input id="switchPort" placeholder="SW-01 / Gi1/0/24" />
+      <label for="notes">Notes</label
+      ><textarea
+        id="notes"
+        placeholder="Owner, room detail, or asset note"
+      ></textarea>
+      <button class="btn btn-success" type="submit">
+        <i class="fas fa-save"></i> Save Assignment
+      </button>
+    </form>
+    {% else %}
+    <div class="empty">
+      Location editing is available to administrators and managers.
+    </div>
+    {% endif %}
+  </aside>
+</div>
+
+<script>
+  let devices = [];
+  const esc = (value) =>
+    String(value || "").replace(
+      /[&<>'"]/g,
+      (char) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "'": "&#39;",
+          '"': "&quot;",
+        })[char],
+    );
+  const label = (device) =>
+    esc(device.hostname || device.ip_address || "Unknown device");
+  function loadLocations() {
+    fetch("/api/device-locations")
+      .then((response) => response.json())
+      .then((data) => {
+        if (!data.success)
+          throw new Error(data.error || "Unable to load locations");
+        devices = data.devices || [];
+        renderMap();
+      })
+      .catch((error) => {
+        document.getElementById("zoneGrid").innerHTML =
+          `<div class="empty">${esc(error.message)}</div>`;
+      });
+  }
+  function renderMap() {
+    const groups = {};
+    devices.forEach((device) => {
+      const site = device.site || "Unassigned";
+      const zone = device.zone || "Unassigned";
+      const key = `${site} / ${zone}`;
+      (groups[key] ||= []).push(device);
+    });
+    document.getElementById("totalDevices").textContent = devices.length;
+    document.getElementById("highRisk").textContent = devices.filter((d) =>
+      ["HIGH", "CRITICAL"].includes(d.risk_level),
+    ).length;
+    document.getElementById("zoneCount").textContent =
+      Object.keys(groups).length;
+    document.getElementById("unassigned").textContent = devices.filter(
+      (d) => !d.zone,
+    ).length;
+    document.getElementById("zoneGrid").innerHTML =
+      Object.entries(groups)
+        .map(
+          ([name, members]) => `
+      <div class="zone ${name.endsWith(" / Unassigned") ? "unassigned" : ""}">
+        <div class="zone-title"><span>${esc(name)}</span><span>${members.length}</span></div>
+        <div class="zone-meta">${esc(members[0].building || "Building not assigned")}${members[0].floor ? " · " + esc(members[0].floor) : ""}</div>
+        ${members.map((device) => `<div class="device-chip" onclick="selectDevice(${device.id})"><span><strong>${label(device)}</strong><small>${esc(device.ip_address)} · ${esc(device.device_type || "Unknown")}</small></span><span class="risk-dot ${esc(device.risk_level)}"></span></div>`).join("")}
+      </div>`,
+        )
+        .join("") || '<div class="empty">No scanned devices found.</div>';
+  }
+  function selectDevice(id) {
+    const device = devices.find((item) => item.id === id);
+    if (!device) return;
+    document.getElementById("selectedTitle").textContent =
+      device.hostname || device.ip_address;
+    document.getElementById("deviceId").value = id;
+    document.getElementById("site").value = device.site || "Primary Site";
+    document.getElementById("building").value = device.building || "";
+    document.getElementById("floor").value = device.floor || "";
+    document.getElementById("zone").value = device.zone || "";
+    document.getElementById("rack").value = device.rack || "";
+    document.getElementById("switchPort").value = device.switch_port || "";
+    document.getElementById("notes").value = device.notes || "";
+  }
+  const form = document.getElementById("locationForm");
+  if (form)
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const id = document.getElementById("deviceId").value;
+      if (!id) return;
+      const value = (field) => document.getElementById(field).value;
+      fetch(`/api/device-locations/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          site: value("site"),
+          building: value("building"),
+          floor: value("floor"),
+          zone: value("zone"),
+          rack: value("rack"),
+          switch_port: value("switchPort"),
+          notes: value("notes"),
+        }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (!data.success) throw new Error(data.error);
+          loadLocations();
+        })
+        .catch((error) => alert(error.message));
+    });
+  loadLocations();
+</script>
+<script>
+  const campusFloors = [
+    {
+      id: "ground",
+      name: "Ground Floor",
+      summary: "Cafeteria, supermarket, reception, and student services",
+      routerSpaces: ["Cafeteria"],
+      rooms: [
+        ["Cafeteria", "Food service", "common", 1, 1, 5, 3],
+        ["Supermarket", "Retail", "service", 6, 1, 3, 3],
+        ["Reception", "Administration", "common", 9, 1, 3, 2],
+        ["Student Lounge", "Common area", "common", 1, 5, 4, 2],
+        ["Security Desk", "Operations", "service", 5, 5, 3, 2],
+        ["Storage", "Facilities", "service", 8, 5, 4, 2],
+        ["Main Entrance", "Public access", "common", 1, 8, 11, 2],
+      ],
+    },
+    {
+      id: "first",
+      name: "First Floor",
+      summary: "Administration offices, faculty rooms, and meeting spaces",
+      routerSpaces: ["Director Office"],
+      rooms: [
+        ["Administration Office", "Administration", "", 1, 1, 4, 3],
+        ["Registrar", "Administration", "", 5, 1, 4, 3],
+        ["Finance Office", "Administration", "", 9, 1, 3, 3],
+        ["Director Office", "Leadership", "", 1, 5, 3, 3],
+        ["Meeting Room A", "Meeting space", "common", 4, 5, 4, 3],
+        ["Faculty Lounge", "Common area", "common", 8, 5, 4, 3],
+        ["Server Racks Room", "Server racks", "service", 1, 9, 4, 2],
+        ["IT Support", "Technology", "service", 5, 9, 4, 2],
+        ["Hallway", "Circulation", "common", 9, 9, 3, 2],
+      ],
+    },
+    {
+      id: "second",
+      name: "Second Floor",
+      summary: "Computer science and business teaching areas",
+      routerSpaces: ["Second Floor", "Second Floor B"],
+      rooms: [
+        ["Computer Lab A", "Computer science", "", 1, 1, 4, 4],
+        ["Computer Lab B", "Computer science", "", 5, 1, 4, 4],
+        ["Business Lab", "Business studies", "", 9, 1, 3, 4],
+        ["Lecture Hall 201", "Teaching", "common", 1, 6, 5, 3],
+        ["Seminar Room 202", "Teaching", "", 6, 6, 3, 3],
+        ["Faculty Office", "Faculty", "", 9, 6, 3, 3],
+        ["Second Floor", "Router space", "service", 1, 10, 3, 2],
+        ["Second Floor B", "Router space", "service", 4, 10, 3, 2],
+        ["Study Area", "Common area", "common", 7, 10, 5, 2],
+      ],
+    },
+    {
+      id: "third",
+      name: "Third Floor",
+      summary: "Arts studios, critique rooms, and creative workshops",
+      routerSpaces: ["Third Floor", "Third Floor B"],
+      rooms: [
+        ["Art Studio A", "Fine arts", "", 1, 1, 5, 4],
+        ["Art Studio B", "Fine arts", "", 6, 1, 4, 4],
+        ["Music Room", "Performing arts", "", 10, 1, 2, 4],
+        ["Gallery", "Exhibition", "common", 1, 6, 4, 3],
+        ["Critique Room", "Arts teaching", "", 5, 6, 4, 3],
+        ["Media Studio", "Digital arts", "", 9, 6, 3, 3],
+        ["Third Floor", "Router space", "service", 1, 10, 3, 2],
+        ["Third Floor B", "Router space", "service", 4, 10, 3, 2],
+        ["Open Studio", "Creative space", "common", 7, 10, 5, 2],
+      ],
+    },
+  ];
+  let activeFloor = campusFloors[0];
+  let selectedRoom = null;
+  const campusEsc = (value) =>
+    String(value || "").replace(
+      /[&<>'"]/g,
+      (char) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "'": "&#39;",
+          '"': "&quot;",
+        })[char],
+    );
+  function drawCampus() {
+    document.getElementById("floorTabs").innerHTML = campusFloors
+      .map(
+        (floor) =>
+          `<button class="floor-tab ${floor.id === activeFloor.id ? "active" : ""}" onclick="chooseFloor('${floor.id}')"><i class="fas fa-layer-group"></i> ${floor.name}</button>`,
+      )
+      .join("");
+    document.getElementById("floorName").textContent = activeFloor.name;
+    document.getElementById("floorSummary").textContent = activeFloor.summary;
+    const placed = {};
+    devices
+      .filter((device) => device.floor === activeFloor.name)
+      .forEach((device) => {
+        placed[device.zone] = (placed[device.zone] || 0) + 1;
+      });
+    document.getElementById("floorplan").innerHTML = activeFloor.rooms
+      .map((room) => {
+        const [name, type, kind, col, row, width, height] = room;
+        return `<button class="room ${kind} ${selectedRoom === name ? "selected" : ""}" style="grid-column:${col}/span ${width};grid-row:${row}/span ${height}" onclick="chooseRoom('${campusEsc(name)}')"><strong>${campusEsc(name)}</strong><small>${campusEsc(type)}</small>${placed[name] ? `<span class="room-count">${placed[name]} device${placed[name] === 1 ? "" : "s"}</span>` : ""}</button>`;
+      })
+      .join("");
+  }
+  function chooseFloor(id) {
+    activeFloor =
+      campusFloors.find((floor) => floor.id === id) || campusFloors[0];
+    selectedRoom = null;
+    document.getElementById("campusRoom").value = "";
+    document.getElementById("roomTitle").textContent = "Select a room";
+    drawCampus();
+  }
+  function chooseRoom(name) {
+    selectedRoom = name;
+    document.getElementById("campusRoom").value =
+      `${activeFloor.name} / ${name}`;
+    document.getElementById("roomTitle").textContent = name;
+    document.getElementById("placementStatus").textContent =
+      "Room selected. Choose a device to place.";
+    document.getElementById("enterRoom").disabled = false;
+    drawCampus();
+  }
+  function enterRoom() {
+    if (!selectedRoom) return;
+    const room = activeFloor.rooms.find((item) => item[0] === selectedRoom);
+    const roomDevices = devices.filter(
+      (device) =>
+        device.floor === activeFloor.name && device.zone === selectedRoom,
+    );
+    document.getElementById("roomModalTitle").textContent = selectedRoom;
+    document.getElementById("roomModalSubtitle").textContent =
+      `${activeFloor.name} · ${room ? room[1] : "Campus room"}`;
+    document.getElementById("roomModal").classList.add("open");
+    buildRoom3d(room, roomDevices);
+    return;
+    const furniture =
+      room && room[1].toLowerCase().includes("computer")
+        ? '<span class="furniture desk" style="left:12%;top:25%">WORKSTATION ROW</span><span class="furniture desk" style="left:42%;top:25%">WORKSTATION ROW</span><span class="furniture desk" style="left:72%;top:25%">WORKSTATION ROW</span>'
+        : room && room[1].toLowerCase().includes("food")
+          ? '<span class="furniture counter" style="left:12%;top:24%">SERVICE COUNTER</span><span class="furniture table" style="left:50%;top:58%">TABLES</span>'
+          : '<span class="furniture desk" style="left:18%;top:28%">DESK</span><span class="furniture table" style="left:54%;top:50%">TABLE</span><span class="furniture sofa" style="left:12%;top:70%">SEATING</span>';
+    const cards = roomDevices
+      .map(
+        (device, index) =>
+          `<button class="interior-device" style="left:${18 + (index % 3) * 28}%;top:${18 + Math.floor(index / 3) * 25}%" onclick="showDeviceDetails(${device.id})"><strong><i class="fas fa-${device.device_type && device.device_type.toLowerCase().includes("server") ? "server" : "desktop"}"></i> ${campusEsc(device.hostname || device.ip_address)}</strong><small>${campusEsc(device.ip_address)} · ${campusEsc(device.risk_level || "UNASSESSED")}</small></button>`,
+      )
+      .join("");
+    document.getElementById("roomInterior").innerHTML =
+      `<span class="wall-label">${campusEsc(room ? room[1] : "Interior view")}</span>${furniture}${cards}<span class="door">DOOR</span>`;
+    document.getElementById("roomModal").classList.add("open");
+  }
+  function showDeviceDetails(id) {
+    const device = devices.find((item) => item.id === id);
+    if (device) {
+      document.getElementById("placementStatus").textContent =
+        `${device.hostname || device.ip_address}: ${device.risk_level || "No risk rating"} · ${device.os || "OS unknown"}`;
+    }
+  }
+  function loadCampusDevices() {
+    fetch("/api/device-locations")
+      .then((response) => response.json())
+      .then((data) => {
+        devices = data.devices || [];
+        const select = document.getElementById("campusDevice");
+        select.innerHTML =
+          '<option value="">Select a device</option>' +
+          devices
+            .map(
+              (device) =>
+                `<option value="${device.id}">${campusEsc(device.hostname || device.ip_address)} · ${campusEsc(device.ip_address)}</option>`,
+            )
+            .join("");
+        drawCampus();
+      });
+  }
+  document.getElementById("placeDevice").addEventListener("click", () => {
+    const deviceId = document.getElementById("campusDevice").value;
+    if (!selectedRoom || !deviceId) {
+      document.getElementById("placementStatus").textContent =
+        "Select both a room and a device first.";
+      return;
+    }
+    const device = devices.find((item) => String(item.id) === String(deviceId));
+    fetch(`/api/device-locations/${deviceId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        site: device.site || "University Campus",
+        building: "Main University Building",
+        floor: activeFloor.name,
+        zone: selectedRoom,
+        rack: document.getElementById("campusRack").value,
+        notes: "Placed from campus prototype",
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (!data.success) throw new Error(data.error);
+        document.getElementById("placementStatus").textContent =
+          "Device placed successfully.";
+        loadCampusDevices();
+      });
+  });
+  document.getElementById("enterRoom").addEventListener("click", enterRoom);
+  document
+    .getElementById("closeRoom")
+    .addEventListener("click", () =>
+      document.getElementById("roomModal").classList.remove("open"),
+    );
+  document.getElementById("roomModal").addEventListener("click", (event) => {
+    if (event.target.id === "roomModal")
+      event.currentTarget.classList.remove("open");
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape")
+      document.getElementById("roomModal").classList.remove("open");
+  });
+  drawCampus();
+  loadCampusDevices();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script>
+  class CampusOrbitControls {
+    constructor(camera, element) {
+      this.camera = camera;
+      this.element = element;
+      this.target = new THREE.Vector3();
+      this.enableDamping = true;
+      this.maxPolarAngle = Math.PI / 2.05;
+      this.spherical = new THREE.Spherical();
+      this.dragging = false;
+      this.last = { x: 0, y: 0 };
+      element.addEventListener("pointerdown", (event) => {
+        this.dragging = true;
+        this.last = { x: event.clientX, y: event.clientY };
+        element.setPointerCapture(event.pointerId);
+      });
+      element.addEventListener("pointermove", (event) => {
+        if (!this.dragging) return;
+        const dx = event.clientX - this.last.x,
+          dy = event.clientY - this.last.y;
+        this.last = { x: event.clientX, y: event.clientY };
+        this.spherical.theta -= dx * 0.008;
+        this.spherical.phi = Math.max(
+          0.35,
+          Math.min(this.maxPolarAngle, this.spherical.phi + dy * 0.008),
+        );
+      });
+      element.addEventListener("pointerup", (event) => {
+        this.dragging = false;
+        element.releasePointerCapture(event.pointerId);
+      });
+      element.addEventListener(
+        "wheel",
+        (event) => {
+          event.preventDefault();
+          const offset = this.camera.position.clone().sub(this.target);
+          const distance = Math.max(
+            6,
+            Math.min(50, offset.length() * (1 + event.deltaY * 0.001)),
+          );
+          offset.setLength(distance);
+          this.camera.position.copy(this.target).add(offset);
+        },
+        { passive: false },
+      );
+    }
+    update() {
+      const offset = this.camera.position.clone().sub(this.target);
+      if (!this.dragging) {
+        this.spherical.setFromVector3(offset);
+      } else {
+        this.spherical.radius = offset.length();
+      }
+      this.camera.position
+        .copy(this.target)
+        .add(new THREE.Vector3().setFromSpherical(this.spherical));
+      this.camera.lookAt(this.target);
+    }
+  }
+  let scene3d,
+    camera3d,
+    renderer3d,
+    controls3d,
+    raycaster3d,
+    pointer3d,
+    model3d,
+    selected3d = null;
+  let roomSceneState = null;
+  const sceneFloors = {};
+  const riskColor = {
+    CRITICAL: 0xff496c,
+    HIGH: 0xff8b4d,
+    MEDIUM: 0xf4c95d,
+    LOW: 0x36d399,
+    NONE: 0x81a7b3,
+  };
+  const firstFloorLaptops = {
+    "Administration Office": [
+      "DESKTOP-NB4BA95 · 10.1.22.47",
+      "Windows PC profile",
+    ],
+    Registrar: ["Linux PC · 10.1.22.13"],
+    "Finance Office": ["Windows laptop profile"],
+    "Director Office": ["Director laptop profile"],
+    "Meeting Room A": ["Presentation laptop profile"],
+  };
+  function labelTexture(text, color = "#d7edf0") {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 96;
+    const context = canvas.getContext("2d");
+    context.fillStyle = "#07111dcc";
+    context.fillRect(0, 0, 512, 96);
+    context.font = "bold 26px Segoe UI";
+    context.fillStyle = color;
+    context.fillText(text.slice(0, 28), 18, 58);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  }
+  function addSceneLabel(text, x, y, z, scale = 1) {
+    const sprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: labelTexture(text),
+        transparent: true,
+        depthTest: false,
+      }),
+    );
+    sprite.position.set(x, y, z);
+    sprite.scale.set(3.2 * scale, 0.6 * scale, 1);
+    return sprite;
+  }
+  function makeWall(width, height, depth, x, y, z, material) {
+    const wall = new THREE.Mesh(
+      new THREE.BoxGeometry(width, height, depth),
+      material,
+    );
+    wall.position.set(x, y, z);
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    return wall;
+  }
+  function addLaptopPrototype(parent, x, y, z, text) {
+    const laptop = new THREE.Group();
+    const base = new THREE.Mesh(
+      new THREE.BoxGeometry(0.9, 0.08, 0.62),
+      new THREE.MeshStandardMaterial({
+        color: 0xaab7bd,
+        metalness: 0.55,
+        roughness: 0.35,
+      }),
+    );
+    base.position.y = 0.05;
+    laptop.add(base);
+    const screen = new THREE.Mesh(
+      new THREE.BoxGeometry(0.82, 0.5, 0.06),
+      new THREE.MeshStandardMaterial({
+        color: 0x1d9fc0,
+        emissive: 0x073d4d,
+        emissiveIntensity: 0.65,
+        metalness: 0.25,
+        roughness: 0.3,
+      }),
+    );
+    screen.position.set(0, 0.34, -0.27);
+    screen.rotation.x = -0.14;
+    laptop.add(screen);
+    laptop.position.set(x, y, z);
+    laptop.rotation.y = 0.15;
+    laptop.userData = { prototype: "laptop", label: text };
+    parent.add(laptop);
+    parent.add(addSceneLabel(text, x - 0.8, y + 1, z, 0.3));
+  }
+  function addRouterPrototype(parent, x, y, z, label) {
+    const router = new THREE.Group();
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.72, 0.24, 0.42),
+      new THREE.MeshStandardMaterial({
+        color: 0xe1b74d,
+        emissive: 0x6b4d13,
+        emissiveIntensity: 0.35,
+        metalness: 0.3,
+      }),
+    );
+    router.add(body);
+    [-0.22, 0, 0.22].forEach((offset) => {
+      const antenna = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.025, 0.025, 0.48, 8),
+        new THREE.MeshStandardMaterial({ color: 0x9aa6ab }),
+      );
+      antenna.position.set(offset, 0.3, 0);
+      antenna.rotation.z = offset * 0.35;
+      router.add(antenna);
+    });
+    router.position.set(x, y, z);
+    parent.add(router);
+    parent.add(addSceneLabel(label, x - 0.8, y + 0.75, z, 0.3));
+  }
+  function buildRoom3d(room, roomDevices) {
+    const host = document.getElementById("room3dInterior");
+    if (roomSceneState?.renderer) roomSceneState.renderer.dispose();
+    host.innerHTML = "";
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x07111d);
+    const camera = new THREE.PerspectiveCamera(
+      45,
+      host.clientWidth / host.clientHeight,
+      0.1,
+      100,
+    );
+    camera.position.set(10, 8, 11);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(host.clientWidth, host.clientHeight);
+    renderer.shadowMap.enabled = true;
+    host.appendChild(renderer.domElement);
+    const controls = new CampusOrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1.3, 0);
+    controls.maxPolarAngle = Math.PI / 2.02;
+    scene.add(new THREE.HemisphereLight(0xb9e4e6, 0x111a26, 2.3));
+    const light = new THREE.DirectionalLight(0xffffff, 2.5);
+    light.position.set(5, 10, 7);
+    light.castShadow = true;
+    scene.add(light);
+    const floor = new THREE.Mesh(
+      new THREE.BoxGeometry(14, 0.25, 10),
+      new THREE.MeshStandardMaterial({ color: 0x294b60, roughness: 0.8 }),
+    );
+    floor.position.y = 0;
+    floor.receiveShadow = true;
+    scene.add(floor);
+    const wallMat = new THREE.MeshStandardMaterial({
+      color: 0x78909a,
+      transparent: true,
+      opacity: 0.82,
+      roughness: 0.75,
+    });
+    const wallH = 4,
+      wallY = 2;
+    scene.add(makeWall(14, wallH, 0.14, 0, wallY, -5, wallMat));
+    scene.add(makeWall(14, wallH, 0.14, 0, wallY, 5, wallMat));
+    scene.add(makeWall(0.14, wallH, 10, -7, wallY, 0, wallMat));
+    scene.add(makeWall(5.6, wallH, 0.14, 4.2, wallY, 0, wallMat));
+    scene.add(makeWall(3.0, wallH, 0.14, -5.5, wallY, 5, wallMat));
+    scene.add(
+      addSceneLabel(room ? room[0] : "Room Interior", -3.5, 4.7, -4.8, 0.85),
+    );
+    const type = (room?.[1] || "").toLowerCase();
+    const furnitureMat = new THREE.MeshStandardMaterial({
+      color: type.includes("computer")
+        ? 0x526c73
+        : type.includes("food")
+          ? 0x80643d
+          : 0x536b78,
+      roughness: 0.75,
+    });
+    const addFurniture = (width, depth, height, x, z, text) => {
+      const item = new THREE.Mesh(
+        new THREE.BoxGeometry(width, height, depth),
+        furnitureMat,
+      );
+      item.position.set(x, height / 2 + 0.16, z);
+      item.castShadow = true;
+      item.receiveShadow = true;
+      scene.add(item);
+      scene.add(addSceneLabel(text, x - 1.1, height + 0.5, z, 0.42));
+    };
+    const addChair = (x, z, rotation = 0) => {
+      const chair = new THREE.Mesh(
+        new THREE.BoxGeometry(0.55, 0.55, 0.55),
+        new THREE.MeshStandardMaterial({ color: 0x9a765b, roughness: 0.8 }),
+      );
+      chair.position.set(x, 0.5, z);
+      chair.rotation.y = rotation;
+      chair.castShadow = true;
+      scene.add(chair);
+    };
+    const addStudent = (x, z, index) => {
+      const body = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.16, 0.22, 0.65, 10),
+        new THREE.MeshStandardMaterial({
+          color: [0x3f8fba, 0xd07a52, 0x6d9b68, 0xa673a8][index % 4],
+          roughness: 0.8,
+        }),
+      );
+      body.position.set(x, 0.55, z);
+      body.castShadow = true;
+      scene.add(body);
+      const head = new THREE.Mesh(
+        new THREE.SphereGeometry(0.16, 12, 8),
+        new THREE.MeshStandardMaterial({ color: 0xd5a27c, roughness: 0.8 }),
+      );
+      head.position.set(x, 0.98, z);
+      head.castShadow = true;
+      scene.add(head);
+    };
+    if (
+      type.includes("computer") ||
+      type.includes("business") ||
+      type.includes("teaching") ||
+      type.includes("arts") ||
+      type.includes("studio") ||
+      type.includes("creative") ||
+      type.includes("fine") ||
+      type.includes("digital") ||
+      type.includes("performing")
+    ) {
+      [-4, 0, 4].forEach((x) =>
+        addFurniture(2.6, 1.1, 0.9, x, -1.1, "WORKSTATIONS"),
+      );
+      for (let i = 0; i < 6; i++)
+        addStudent(-4 + (i % 3) * 4, -2.2 + Math.floor(i / 3) * 2.1, i);
+    } else if (type.includes("food")) {
+      addFurniture(7, 1.1, 1.1, 0, -3.2, "SERVICE COUNTER");
+      [-3, 2].forEach((x) => {
+        addFurniture(2.1, 2.1, 0.7, x, 1, "ROUND TABLE");
+        for (let i = 0; i < 4; i++) {
+          const angle = (i * Math.PI) / 2;
+          addChair(
+            x + Math.cos(angle) * 1.55,
+            1 + Math.sin(angle) * 1.55,
+            angle,
+          );
+        }
+      });
+      for (let i = 0; i < 3; i++) addStudent(-4 + i * 3, 3, i);
+    } else if (type.includes("server")) {
+      [-3, 0, 3].forEach((x) =>
+        addFurniture(0.85, 2.8, 2.7, x, -1.1, "SERVER RACK"),
+      );
+      addFurniture(4, 0.7, 0.8, 0, 2.8, "CONSOLE");
+    } else {
+      addFurniture(3, 1.3, 0.85, -3, -1, "DESK");
+      addFurniture(4, 2, 0.7, 2, 1, "MEETING TABLE");
+      addFurniture(3.2, 1.1, 0.75, -2, 2.8, "SEATING");
+    }
+    if (activeFloor.routerSpaces.includes(room?.[0])) {
+      addRouterPrototype(scene, 0, 2.75, -4.82, "ROUTER SPACE");
+    }
+    if (activeFloor.id === "first" && firstFloorLaptops[room?.[0]]) {
+      firstFloorLaptops[room[0]].forEach((label, index) =>
+        addLaptopPrototype(scene, -3 + index * 2.3, 0.3, 2.4, label),
+      );
+    }
+    roomDevices.forEach((device, index) => {
+      const marker = new THREE.Mesh(
+        new THREE.BoxGeometry(0.55, 0.8, 0.55),
+        new THREE.MeshStandardMaterial({
+          color: riskColor[device.risk_level] || riskColor.NONE,
+          emissive: riskColor[device.risk_level] || riskColor.NONE,
+          emissiveIntensity: 0.25,
+        }),
+      );
+      marker.position.set(
+        -4 + (index % 4) * 2.6,
+        1.05,
+        -0.3 + Math.floor(index / 4) * 1.7,
+      );
+      marker.userData = device;
+      marker.castShadow = true;
+      scene.add(marker);
+      scene.add(
+        addSceneLabel(
+          device.hostname || device.ip_address,
+          marker.position.x - 0.9,
+          2,
+          marker.position.z,
+          0.38,
+        ),
+      );
+    });
+    const door = new THREE.Mesh(
+      new THREE.BoxGeometry(1.7, 0.12, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0xd39a58 }),
+    );
+    door.position.set(0, 0.08, 5);
+    scene.add(door);
+    scene.add(addSceneLabel("EXIT", -0.5, 0.45, 4.8, 0.4));
+    renderer.render(scene, camera);
+    roomSceneState = { scene, camera, renderer, controls };
+    const roomRaycaster = new THREE.Raycaster();
+    const roomPointer = new THREE.Vector2();
+    renderer.domElement.addEventListener("pointerup", (event) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      roomPointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      roomPointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      roomRaycaster.setFromCamera(roomPointer, camera);
+      const hit = roomRaycaster
+        .intersectObjects(scene.children)
+        .find((item) => item.object.userData && item.object.userData.id);
+      if (hit) showDeviceDetails(hit.object.userData.id);
+    });
+    const resize = () => {
+      camera.aspect = host.clientWidth / host.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(host.clientWidth, host.clientHeight);
+    };
+    window.addEventListener("resize", resize, { once: true });
+    const animate = () => {
+      if (roomSceneState?.renderer !== renderer) return;
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    };
+    animate();
+  }
+  function build3dScene() {
+    const host = document.getElementById("campus3d");
+    host.innerHTML = "";
+    scene3d = new THREE.Scene();
+    scene3d.background = new THREE.Color(0x07111d);
+    camera3d = new THREE.PerspectiveCamera(
+      42,
+      host.clientWidth / host.clientHeight,
+      0.1,
+      200,
+    );
+    camera3d.position.set(17, 16, 20);
+    renderer3d = new THREE.WebGLRenderer({ antialias: true });
+    renderer3d.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer3d.setSize(host.clientWidth, host.clientHeight);
+    renderer3d.shadowMap.enabled = true;
+    renderer3d.shadowMap.type = THREE.PCFSoftShadowMap;
+    host.appendChild(renderer3d.domElement);
+    controls3d = new CampusOrbitControls(camera3d, renderer3d.domElement);
+    controls3d.enableDamping = true;
+    controls3d.target.set(0, 4, 0);
+    controls3d.maxPolarAngle = Math.PI / 2.05;
+    scene3d.add(new THREE.HemisphereLight(0xafd4de, 0x101923, 2.2));
+    const key = new THREE.DirectionalLight(0xffffff, 2.8);
+    key.position.set(8, 18, 10);
+    key.castShadow = true;
+    scene3d.add(key);
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(70, 70),
+      new THREE.MeshStandardMaterial({ color: 0x0b1822, roughness: 0.9 }),
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.08;
+    ground.receiveShadow = true;
+    scene3d.add(ground);
+    model3d = new THREE.Group();
+    scene3d.add(model3d);
+    raycaster3d = new THREE.Raycaster();
+    pointer3d = new THREE.Vector2();
+    const floorSelect = document.getElementById("sceneFloor");
+    floorSelect.innerHTML = '<option value="all">All floors</option>';
+    campusFloors.forEach((floor, floorIndex) => {
+      const group = new THREE.Group();
+      group.userData.floorId = floor.id;
+      sceneFloors[floor.id] = group;
+      model3d.add(group);
+      floorSelect.insertAdjacentHTML(
+        "beforeend",
+        `<option value="${floor.id}">${floor.name}</option>`,
+      );
+      const y = floorIndex * 3.8;
+      const slab = new THREE.Mesh(
+        new THREE.BoxGeometry(15, 0.28, 15),
+        new THREE.MeshStandardMaterial({ color: 0x203b4b, roughness: 0.72 }),
+      );
+      slab.position.y = y;
+      slab.receiveShadow = true;
+      group.add(slab);
+      group.add(addSceneLabel(floor.name, -5.3, y + 1.4, -6.8, 0.9));
+      floor.rooms.forEach((roomData) => {
+        const [name, type, kind, col, row, width, height] = roomData;
+        const x = col - 1 + width / 2 - 6;
+        const z = row - 1 + height / 2 - 6;
+        const roomWidth = width * 0.92,
+          roomDepth = height * 0.92;
+        const color =
+          kind === "service"
+            ? 0x5c4630
+            : kind === "common"
+              ? 0x334d55
+              : 0x294b60;
+        const roomGroup = new THREE.Group();
+        roomGroup.userData = { floor, name, type, x, y, z };
+        group.add(roomGroup);
+        const material = new THREE.MeshStandardMaterial({
+          color,
+          roughness: 0.78,
+          metalness: 0.08,
+        });
+        const floorMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(roomWidth, 0.12, roomDepth),
+          material,
+        );
+        floorMesh.position.set(x, y + 0.2, z);
+        floorMesh.userData = roomGroup.userData;
+        floorMesh.castShadow = true;
+        floorMesh.receiveShadow = true;
+        roomGroup.add(floorMesh);
+        const wallMat = new THREE.MeshStandardMaterial({
+          color: 0x78909a,
+          transparent: true,
+          opacity: 0.72,
+          roughness: 0.7,
+        });
+        const wallHeight = 1.55;
+        roomGroup.add(
+          makeWall(
+            roomWidth,
+            wallHeight,
+            0.1,
+            x,
+            y + 0.95,
+            z - roomDepth / 2,
+            wallMat,
+          ),
+        );
+        roomGroup.add(
+          makeWall(
+            roomWidth,
+            wallHeight,
+            0.1,
+            x,
+            y + 0.95,
+            z + roomDepth / 2,
+            wallMat,
+          ),
+        );
+        roomGroup.add(
+          makeWall(
+            0.1,
+            wallHeight,
+            roomDepth,
+            x - roomWidth / 2,
+            y + 0.95,
+            z,
+            wallMat,
+          ),
+        );
+        roomGroup.add(
+          makeWall(
+            0.1,
+            wallHeight,
+            roomDepth,
+            x + roomWidth / 2,
+            y + 0.95,
+            z,
+            wallMat,
+          ),
+        );
+        roomGroup.add(addSceneLabel(name, x, y + 1.95, z, 0.58));
+        roomGroup.traverse((item) => {
+          item.userData = roomGroup.userData;
+        });
+        if (floor.routerSpaces.includes(name)) {
+          addRouterPrototype(
+            roomGroup,
+            x,
+            y + 1.25,
+            z - roomDepth / 2 + 0.18,
+            "ROUTER SPACE",
+          );
+        }
+        if (floor.id === "first" && firstFloorLaptops[name]) {
+          firstFloorLaptops[name].forEach((label, index) =>
+            addLaptopPrototype(
+              roomGroup,
+              x - roomWidth * 0.22 + index * 0.8,
+              y + 0.35,
+              z,
+              label,
+            ),
+          );
+        }
+        const roomDevices = devices.filter(
+          (device) => device.floor === floor.name && device.zone === name,
+        );
+        roomDevices.forEach((device, index) => {
+          const marker = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.18, 0.24, 0.55, 12),
+            new THREE.MeshStandardMaterial({
+              color: riskColor[device.risk_level] || riskColor.NONE,
+              emissive: riskColor[device.risk_level] || riskColor.NONE,
+              emissiveIntensity: 0.18,
+            }),
+          );
+          marker.position.set(
+            x - roomWidth * 0.25 + (index % 3) * 0.5,
+            y + 0.65,
+            z - roomDepth * 0.2 + Math.floor(index / 3) * 0.5,
+          );
+          marker.userData = { ...roomGroup.userData, device };
+          marker.castShadow = true;
+          roomGroup.add(marker);
+        });
+      });
+    });
+    floorSelect.onchange = () => {
+      Object.entries(sceneFloors).forEach(
+        ([id, group]) =>
+          (group.visible =
+            floorSelect.value === "all" || floorSelect.value === id),
+      );
+      reset3dView();
+    };
+    host.addEventListener("pointerdown", (event) => {
+      const rect = renderer3d.domElement.getBoundingClientRect();
+      pointer3d.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer3d.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster3d.setFromCamera(pointer3d, camera3d);
+      const hits = raycaster3d
+        .intersectObjects(model3d.children, true)
+        .filter((hit) => hit.object.userData && hit.object.userData.name);
+      if (hits.length) select3dRoom(hits[0].object.userData);
+    });
+    window.addEventListener("resize", resize3d);
+    document.getElementById("sceneReset").onclick = reset3dView;
+    document.getElementById("sceneEnter").onclick = () => {
+      if (selected3d) {
+        activeFloor = selected3d.floor;
+        chooseRoom(selected3d.name);
+        enterRoom();
+      }
+    };
+    animate3d();
+    reset3dView();
+    document.getElementById("sceneStatus").textContent =
+      "Model ready · select a room to inspect";
+  }
+  function select3dRoom(data) {
+    selected3d = data;
+    document.getElementById("sceneEnter").disabled = false;
+    const count = devices.filter(
+      (device) => device.floor === data.floor.name && device.zone === data.name,
+    ).length;
+    document.getElementById("sceneSelection").textContent =
+      `${data.floor.name} / ${data.name}`;
+    document.getElementById("sceneDevices").textContent =
+      `${count} device${count === 1 ? "" : "s"}`;
+    document.getElementById("sceneMode").textContent = "Room selected";
+    focus3d(data.x, data.y + 1.2, data.z);
+  }
+  function focus3d(x, y, z) {
+    controls3d.target.set(x, y, z);
+    camera3d.position.set(x + 8, y + 7, z + 9);
+  }
+  function reset3dView() {
+    controls3d.target.set(0, 4, 0);
+    camera3d.position.set(17, 16, 20);
+    document.getElementById("sceneMode").textContent = "Orbit view";
+  }
+  function resize3d() {
+    const host = document.getElementById("campus3d");
+    if (!renderer3d) return;
+    camera3d.aspect = host.clientWidth / host.clientHeight;
+    camera3d.updateProjectionMatrix();
+    renderer3d.setSize(host.clientWidth, host.clientHeight);
+  }
+  function animate3d() {
+    requestAnimationFrame(animate3d);
+    controls3d.update();
+    renderer3d.render(scene3d, camera3d);
+  }
+  fetch("/api/device-locations")
+    .then((response) => response.json())
+    .then((data) => {
+      devices = data.devices || [];
+      build3dScene();
+    })
+    .catch((error) => {
+      console.error("3D campus initialization failed", error);
+      document.getElementById("sceneStatus").textContent =
+        `3D model error: ${error.message}`;
+    });
+</script>
+{% endblock %}

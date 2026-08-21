@@ -1,0 +1,24 @@
+Prerequisite: Turn on 2-Step Verification
+Google requires 2-Step Verification to be enabled before you can create an app password.
+
+Go to your Google Account: myaccount.google.com
+
+Click Security in the left sidebar.
+
+Under “How you sign in to Google”, click 2-Step Verification and turn it ON.
+
+Follow the prompts to verify your account with your phone.
+
+Step-by-Step: Generate the App Password
+Once 2-Step Verification is active:
+
+Go directly to the App Passwords page:
+myaccount.google.com/apppasswords
+(You may need to sign in again.)
+
+Enter a name for the app or device (e.g., FlaskApp, NetworkScanner, or any name you’ll recognise).
+
+Click Create – Google will generate a 16‑digit password.
+
+Copy the password immediately and paste it into your .env file.
+⚠️ Important: Google shows this code only once – if you lose it, you’ll need to generate a new one.

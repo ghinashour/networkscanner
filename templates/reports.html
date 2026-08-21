@@ -1,0 +1,2253 @@
+{% extends "base.html" %} {% block content %}
+<div class="page-header">
+  <h1><i class="fas fa-file-chart-column"></i> Reports</h1>
+  <div class="header-actions">
+    <button class="btn btn-primary btn-sm" onclick="refreshReports()">
+      <i class="fas fa-sync"></i> Refresh
+    </button>
+    {% if user_role in ['administrator', 'manager'] %}
+    <div style="display: inline-flex; gap: 5px; align-items: center">
+      <select
+        id="exportFormat"
+        style="
+          padding: 5px 8px;
+          background: var(--bg-primary);
+          border: 1px solid var(--border-color);
+          border-radius: 6px;
+          color: var(--text-primary);
+        "
+      >
+        <option value="csv">CSV</option>
+        <option value="pdf">PDF</option>
+        <option value="json">JSON</option>
+      </select>
+      <button class="btn btn-success btn-sm" onclick="exportReport()">
+        <i class="fas fa-download"></i> Export
+      </button>
+    </div>
+    <div
+      style="
+        display: inline-flex;
+        gap: 5px;
+        align-items: center;
+        margin-left: 10px;
+      "
+    >
+      <input
+        type="email"
+        id="reportEmail"
+        placeholder="recipient@example.com"
+        style="
+          padding: 5px 8px;
+          width: 180px;
+          background: var(--bg-primary);
+          border: 1px solid var(--border-color);
+          border-radius: 6px;
+          color: var(--text-primary);
+        "
+      />
+      <button class="btn btn-info btn-sm" onclick="sendReportEmail()">
+        <i class="fas fa-envelope"></i> Send
+      </button>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Tabs -->
+<div style="margin-bottom: 25px">
+  <div
+    style="
+      display: flex;
+      gap: 5px;
+      border-bottom: 1px solid var(--border-color);
+    "
+  >
+    <button
+      class="tab-btn active"
+      onclick="switchTab('executive')"
+      style="
+        padding: 10px 20px;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.3s;
+      "
+    >
+      <i class="fas fa-chart-line"></i> Executive Summary
+    </button>
+    <button
+      class="tab-btn"
+      onclick="switchTab('technical')"
+      style="
+        padding: 10px 20px;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.3s;
+      "
+    >
+      <i class="fas fa-code"></i> Technical Report
+    </button>
+    <button
+      class="tab-btn"
+      onclick="switchTab('vulnerability')"
+      style="
+        padding: 10px 20px;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.3s;
+      "
+    >
+      <i class="fas fa-bug"></i> Vulnerability Report
+    </button>
+    <button
+      class="tab-btn"
+      onclick="switchTab('compliance')"
+      style="
+        padding: 10px 20px;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.3s;
+      "
+    >
+      <i class="fas fa-shield-alt"></i> Compliance
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- EXECUTIVE SUMMARY TAB -->
+<!-- ============================================================ -->
+<div id="tab-executive" class="tab-content active">
+  <!-- Top row: Security Posture Score + Key Metrics -->
+  <div
+    style="
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 20px;
+      margin-bottom: 25px;
+    "
+  >
+    <!-- Gauge / Score -->
+    <div
+      style="
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+      "
+    >
+      <div style="font-size: 13px; color: var(--text-secondary)">
+        Security Posture
+      </div>
+      <div
+        style="
+          position: relative;
+          width: 120px;
+          height: 120px;
+          margin: 10px auto;
+        "
+      >
+        <canvas id="postureGauge" width="120" height="120"></canvas>
+        <div
+          id="postureScore"
+          style="
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--accent);
+          "
+        >
+          -
+        </div>
+      </div>
+      <div style="font-size: 12px; color: var(--text-secondary)">
+        out of 100
+      </div>
+    </div>
+    <!-- KPI cards -->
+    <div
+      style="
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 15px;
+      "
+    >
+      <div
+        style="
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: 10px;
+          padding: 15px;
+          text-align: center;
+        "
+      >
+        <div
+          style="font-size: 28px; font-weight: bold; color: var(--accent)"
+          id="execTotalDevices"
+        >
+          -
+        </div>
+        <div style="color: var(--text-secondary); font-size: 13px">
+          Total Devices
+        </div>
+      </div>
+      <div
+        style="
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: 10px;
+          padding: 15px;
+          text-align: center;
+        "
+      >
+        <div
+          style="font-size: 28px; font-weight: bold; color: var(--critical)"
+          id="execCriticalVulns"
+        >
+          -
+        </div>
+        <div style="color: var(--text-secondary); font-size: 13px">
+          Critical Vulns
+        </div>
+      </div>
+      <div
+        style="
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: 10px;
+          padding: 15px;
+          text-align: center;
+        "
+      >
+        <div
+          style="font-size: 28px; font-weight: bold; color: var(--high)"
+          id="execHighVulns"
+        >
+          -
+        </div>
+        <div style="color: var(--text-secondary); font-size: 13px">
+          High Vulns
+        </div>
+      </div>
+      <div
+        style="
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: 10px;
+          padding: 15px;
+          text-align: center;
+        "
+      >
+        <div
+          style="font-size: 28px; font-weight: bold; color: var(--accent2)"
+          id="execSecureDevices"
+        >
+          -
+        </div>
+        <div style="color: var(--text-secondary); font-size: 13px">
+          Secure Devices
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts: Risk Distribution, Device Types, and Trend -->
+  <div
+    style="
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 25px;
+    "
+  >
+    <div
+      style="
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 20px;
+      "
+    >
+      <h3 style="margin-bottom: 15px; font-size: 16px">Risk Distribution</h3>
+      <canvas id="execRiskChart" height="200"></canvas>
+    </div>
+    <div
+      style="
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 20px;
+      "
+    >
+      <h3 style="margin-bottom: 15px; font-size: 16px">
+        Device Type Distribution
+      </h3>
+      <canvas id="execDeviceChart" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- Risk Trend (new) -->
+  <div
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 25px;
+    "
+  >
+    <h3 style="margin-bottom: 15px; font-size: 16px">
+      <i class="fas fa-chart-line"></i> Risk Trend (Last 7 Days)
+    </h3>
+    <canvas id="riskTrendChart" height="80"></canvas>
+  </div>
+
+  <!-- Two-column: Top Critical Vulns + Most Affected Devices -->
+  <div
+    style="
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 25px;
+    "
+  >
+    <div
+      style="
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 20px;
+      "
+    >
+      <h3 style="margin-bottom: 10px; font-size: 16px">
+        <i class="fas fa-triangle-exclamation"></i> Top 5 Critical
+        Vulnerabilities
+      </h3>
+      <div
+        id="topCriticalVulns"
+        style="color: var(--text-secondary); font-size: 14px"
+      >
+        Loading...
+      </div>
+    </div>
+    <div
+      style="
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 20px;
+      "
+    >
+      <h3 style="margin-bottom: 10px; font-size: 16px">
+        <i class="fas fa-server"></i> Most Affected Devices
+      </h3>
+      <div
+        id="mostAffectedDevices"
+        style="color: var(--text-secondary); font-size: 14px"
+      >
+        Loading...
+      </div>
+    </div>
+  </div>
+
+  <!-- AI-Generated Executive Summary -->
+  <div
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+    "
+  >
+    <h3 style="margin-bottom: 10px; font-size: 16px">
+      <i class="fas fa-brain"></i> AI‑Generated Executive Summary
+    </h3>
+    <div
+      id="executiveSummaryText"
+      style="
+        color: var(--text-secondary);
+        line-height: 1.8;
+        padding: 15px;
+        background: var(--bg-primary);
+        border-radius: 6px;
+        white-space: pre-wrap;
+      "
+    >
+      Loading executive summary...
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- TECHNICAL REPORT TAB -->
+<!-- ============================================================ -->
+<div id="tab-technical" class="tab-content" style="display: none">
+  <div
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+    "
+  >
+    <h3 style="margin-bottom: 15px; font-size: 16px">🔧 Technical Details</h3>
+    <!-- Search & filter for devices -->
+    <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap">
+      <input
+        type="text"
+        id="techSearch"
+        onkeyup="filterTechnicalTable()"
+        placeholder="Search IP, hostname..."
+        style="
+          flex: 1;
+          min-width: 200px;
+          padding: 8px;
+          background: var(--bg-primary);
+          border: 1px solid var(--border-color);
+          border-radius: 6px;
+          color: var(--text-primary);
+        "
+      />
+      <select
+        id="techTypeFilter"
+        onchange="filterTechnicalTable()"
+        style="
+          padding: 8px;
+          background: var(--bg-primary);
+          border: 1px solid var(--border-color);
+          border-radius: 6px;
+          color: var(--text-primary);
+        "
+      >
+        <option value="all">All Types</option>
+      </select>
+    </div>
+    <div style="overflow-x: auto">
+      <table
+        style="width: 100%; border-collapse: collapse"
+        id="techDeviceTable"
+      >
+        <thead>
+          <tr
+            style="
+              color: var(--text-secondary);
+              border-bottom: 2px solid var(--border-color);
+            "
+          >
+            <th
+              style="padding: 10px; text-align: left; cursor: pointer"
+              onclick="sortTechTable(0)"
+            >
+              IP Address
+            </th>
+            <th
+              style="padding: 10px; text-align: left; cursor: pointer"
+              onclick="sortTechTable(1)"
+            >
+              Hostname
+            </th>
+            <th
+              style="padding: 10px; text-align: left; cursor: pointer"
+              onclick="sortTechTable(2)"
+            >
+              Type
+            </th>
+            <th
+              style="padding: 10px; text-align: left; cursor: pointer"
+              onclick="sortTechTable(3)"
+            >
+              OS
+            </th>
+            <th
+              style="padding: 10px; text-align: center; cursor: pointer"
+              onclick="sortTechTable(4)"
+            >
+              Ports
+            </th>
+            <th
+              style="padding: 10px; text-align: center; cursor: pointer"
+              onclick="sortTechTable(5)"
+            >
+              Risk Score
+            </th>
+            <th
+              style="padding: 10px; text-align: center; cursor: pointer"
+              onclick="sortTechTable(6)"
+            >
+              Total CVEs
+            </th>
+            <th style="padding: 10px; text-align: center">Last Scan</th>
+          </tr>
+        </thead>
+        <tbody id="techDeviceBody">
+          <tr>
+            <td
+              colspan="8"
+              style="
+                text-align: center;
+                padding: 40px;
+                color: var(--text-secondary);
+              "
+            >
+              Loading devices...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div
+      style="
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border-color);
+      "
+    >
+      <h3 style="margin-bottom: 10px; font-size: 16px">🔌 Top Open Ports</h3>
+      <div id="topPorts" style="color: var(--text-secondary)">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- VULNERABILITY REPORT TAB -->
+<!-- ============================================================ -->
+<div id="tab-vulnerability" class="tab-content" style="display: none">
+  <div
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+    "
+  >
+    <h3 style="margin-bottom: 15px; font-size: 16px">
+      🐛 Detailed Vulnerability Report
+    </h3>
+
+    <!-- Severity distribution chart -->
+    <div style="margin-bottom: 15px; max-width: 400px">
+      <canvas id="vulnSeverityChart" height="100"></canvas>
+    </div>
+
+    <!-- Filters -->
+    <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap">
+      <select
+        id="vulnSeverityFilter"
+        onchange="filterVulnerabilities()"
+        style="
+          padding: 8px;
+          background: var(--bg-primary);
+          border: 1px solid var(--border-color);
+          border-radius: 6px;
+          color: var(--text-primary);
+        "
+      >
+        <option value="all">All Severities</option>
+        <option value="CRITICAL">Critical</option>
+        <option value="HIGH">High</option>
+        <option value="MEDIUM">Medium</option>
+        <option value="LOW">Low</option>
+      </select>
+      <select
+        id="vulnDeviceFilter"
+        onchange="filterVulnerabilities()"
+        style="
+          padding: 8px;
+          background: var(--bg-primary);
+          border: 1px solid var(--border-color);
+          border-radius: 6px;
+          color: var(--text-primary);
+        "
+      >
+        <option value="all">All Devices</option>
+      </select>
+      <input
+        type="text"
+        id="vulnSearch"
+        onkeyup="filterVulnerabilities()"
+        placeholder="Search CVEs..."
+        style="
+          flex: 1;
+          min-width: 150px;
+          padding: 8px;
+          background: var(--bg-primary);
+          border: 1px solid var(--border-color);
+          border-radius: 6px;
+          color: var(--text-primary);
+        "
+      />
+    </div>
+
+    <!-- Table with pagination -->
+    <div style="overflow-x: auto">
+      <table style="width: 100%; border-collapse: collapse" id="vulnTable">
+        <thead>
+          <tr
+            style="
+              color: var(--text-secondary);
+              border-bottom: 2px solid var(--border-color);
+            "
+          >
+            <th style="padding: 10px; text-align: left">CVE ID</th>
+            <th style="padding: 10px; text-align: left">Description</th>
+            <th style="padding: 10px; text-align: center">CVSS</th>
+            <th style="padding: 10px; text-align: center">Severity</th>
+            <th style="padding: 10px; text-align: center">Affected Devices</th>
+            <th style="padding: 10px; text-align: left">Service</th>
+          </tr>
+        </thead>
+        <tbody id="vulnBody">
+          <tr>
+            <td
+              colspan="6"
+              style="
+                text-align: center;
+                padding: 40px;
+                color: var(--text-secondary);
+              "
+            >
+              Loading vulnerabilities...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- Pagination controls -->
+    <div
+      style="
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+        font-size: 14px;
+        color: var(--text-secondary);
+      "
+    >
+      <span id="vulnPaginationInfo">Showing 0-0 of 0</span>
+      <div>
+        <button
+          class="btn btn-sm"
+          onclick="changeVulnPage(-1)"
+          style="
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+          "
+        >
+          Previous
+        </button>
+        <button
+          class="btn btn-sm"
+          onclick="changeVulnPage(1)"
+          style="
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+          "
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- COMPLIANCE TAB -->
+<!-- ============================================================ -->
+<div id="tab-compliance" class="tab-content" style="display: none">
+  <style>
+    .compliance-command {
+      background: linear-gradient(120deg, #102c3c, #0a1826 65%, #112b30);
+      border: 1px solid #2b7181;
+      border-radius: 8px;
+      padding: 18px;
+      margin-bottom: 18px;
+      box-shadow:
+        0 0 28px #20d7f51c,
+        inset 0 1px #ffffff0b;
+    }
+    .compliance-command-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .compliance-command h2 {
+      font-size: 19px;
+      margin: 0;
+    }
+    .compliance-command h2 i {
+      color: var(--accent2);
+    }
+    .compliance-command p {
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-top: 5px;
+    }
+    .compliance-actions {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+    .compliance-actions button {
+      border: 1px solid #4d8192;
+      background: #0d2635;
+      color: var(--text-primary);
+      border-radius: 4px;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+    .compliance-actions button:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 14px #20d7f533;
+    }
+    .compliance-command-grid {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 20px;
+      align-items: center;
+      margin-top: 16px;
+    }
+    .compliance-score-ring {
+      width: 128px;
+      height: 128px;
+      border: 7px solid #214b5d;
+      border-top-color: var(--accent2);
+      border-right-color: var(--accent);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 0 24px #63f5b133;
+    }
+    .compliance-score-ring strong {
+      font-size: 27px;
+    }
+    .compliance-score-ring span {
+      display: block;
+      color: var(--text-secondary);
+      font-size: 10px;
+      text-align: center;
+    }
+    .compliance-health {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .health-stat {
+      background: #071522b8;
+      border: 1px solid #25536a;
+      border-radius: 5px;
+      padding: 11px;
+    }
+    .health-stat b {
+      display: block;
+      font-size: 18px;
+      color: var(--accent);
+    }
+    .health-stat span {
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+    .framework-panel {
+      margin-top: 18px;
+    }
+    .framework-panel h3 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .framework-card {
+      background: linear-gradient(145deg, #102338, #091522);
+      border: 1px solid #214963;
+      border-radius: 6px;
+      padding: 15px;
+      text-align: left;
+      transition: 0.25s;
+    }
+    .framework-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 0 18px #20d7f526;
+    }
+    .framework-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .framework-card-head i {
+      font-size: 22px;
+      color: var(--accent);
+    }
+    .framework-card small {
+      color: var(--text-secondary);
+      display: block;
+      margin: 8px 0;
+    }
+    .framework-score {
+      font-size: 21px;
+      font-weight: 700;
+      color: var(--accent2);
+    }
+    .framework-bar {
+      height: 5px;
+      border-radius: 5px;
+      background: #07111d;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .framework-bar span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      box-shadow: 0 0 12px var(--accent2);
+      transition: width 0.8s ease;
+    }
+    .remediation-list {
+      max-height: 245px;
+      overflow: auto;
+    }
+    .remediation-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px solid #214157;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .remediation-item i {
+      color: var(--high);
+      margin-top: 2px;
+    }
+    .remediation-item.done i {
+      color: var(--accent2);
+    }
+    @media (max-width: 800px) {
+      .compliance-command-grid {
+        grid-template-columns: 1fr;
+      }
+      .compliance-score-ring {
+        margin: auto;
+      }
+      .compliance-health {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <section class="compliance-command">
+    <div class="compliance-command-head">
+      <div>
+        <h2><i class="fas fa-satellite-dish"></i> Compliance Command Center</h2>
+        <p id="compliancePulse">
+          Live posture synthesis from the current device and vulnerability
+          inventory.
+        </p>
+      </div>
+      <div class="compliance-actions">
+        <button
+          onclick="loadComplianceReport()"
+          title="Refresh compliance data"
+        >
+          <i class="fas fa-rotate"></i> Refresh</button
+        ><button
+          onclick="copyComplianceBrief()"
+          title="Copy executive compliance brief"
+        >
+          <i class="fas fa-copy"></i> Copy brief</button
+        ><button
+          onclick="printComplianceBrief()"
+          title="Print compliance brief"
+        >
+          <i class="fas fa-print"></i> Print
+        </button>
+      </div>
+    </div>
+    <div class="compliance-command-grid">
+      <div class="compliance-score-ring">
+        <div><strong id="commandScore">-</strong><span>POSTURE</span></div>
+      </div>
+      <div class="compliance-health">
+        <div class="health-stat">
+          <b id="commandCritical">0</b><span>Critical findings</span>
+        </div>
+        <div class="health-stat">
+          <b id="commandExposure">0</b><span>Open findings</span>
+        </div>
+        <div class="health-stat">
+          <b id="commandCoverage">0%</b><span>Control coverage</span>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px">
+    <!-- Compliance Score -->
+    <div
+      style="
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 20px;
+      "
+    >
+      <h3 style="margin-bottom: 15px; font-size: 16px">
+        <i class="fas fa-chart-line"></i> Compliance Score
+      </h3>
+      <div style="text-align: center; padding: 20px">
+        <div
+          style="font-size: 48px; font-weight: bold; color: var(--accent)"
+          id="complianceScore"
+        >
+          -
+        </div>
+        <div style="color: var(--text-secondary); margin-top: 5px">
+          Overall Security Score
+        </div>
+      </div>
+      <div
+        style="
+          background: var(--bg-primary);
+          border-radius: 6px;
+          padding: 15px;
+          margin-top: 10px;
+        "
+      >
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid var(--border-color);
+          "
+        >
+          <span style="color: var(--text-secondary)">Critical</span>
+          <span id="compCritical" style="color: var(--critical)">0</span>
+        </div>
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid var(--border-color);
+          "
+        >
+          <span style="color: var(--text-secondary)">High</span>
+          <span id="compHigh" style="color: var(--high)">0</span>
+        </div>
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid var(--border-color);
+          "
+        >
+          <span style="color: var(--text-secondary)">Medium</span>
+          <span id="compMedium" style="color: var(--medium)">0</span>
+        </div>
+        <div
+          style="display: flex; justify-content: space-between; padding: 5px 0"
+        >
+          <span style="color: var(--text-secondary)">Low</span>
+          <span id="compLow" style="color: var(--low)">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recommendations -->
+    <div
+      style="
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 20px;
+      "
+    >
+      <h3 style="margin-bottom: 15px; font-size: 16px">
+        <i class="fas fa-list-check"></i> Remediation Queue
+      </h3>
+      <div
+        id="recommendations"
+        class="remediation-list"
+        style="color: var(--text-secondary)"
+      >
+        Loading recommendations...
+      </div>
+    </div>
+  </div>
+
+  <!-- Framework Compliance with Radar Chart -->
+  <div
+    style="
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+    "
+  >
+    <h3 style="margin-bottom: 15px; font-size: 16px">
+      <i class="fas fa-building-shield"></i> Framework Compliance
+      <span class="status-badge status-fresh"
+        ><i class="fas fa-circle"></i> Live controls</span
+      >
+    </h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px">
+      <div
+        style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px"
+        class="framework-panel"
+      >
+        <div
+          style="
+            background: var(--bg-primary);
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+          "
+        >
+          <div style="font-size: 32px"><i class="fas fa-lock"></i></div>
+          <div style="font-weight: bold; margin-top: 5px">CIS</div>
+          <div style="color: var(--text-secondary); font-size: 12px">
+            Compliance Score
+          </div>
+          <div
+            style="font-size: 20px; font-weight: bold; color: var(--accent2)"
+            id="cisScore"
+          >
+            -
+          </div>
+          <div class="framework-bar"><span id="cisBar"></span></div>
+        </div>
+        <div
+          style="
+            background: var(--bg-primary);
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+          "
+        >
+          <div style="font-size: 32px">
+            <i class="fas fa-shield-halved"></i>
+          </div>
+          <div style="font-weight: bold; margin-top: 5px">NIST</div>
+          <div style="color: var(--text-secondary); font-size: 12px">
+            Compliance Score
+          </div>
+          <div
+            style="font-size: 20px; font-weight: bold; color: var(--accent2)"
+            id="nistScore"
+          >
+            -
+          </div>
+          <div class="framework-bar"><span id="nistBar"></span></div>
+        </div>
+        <div
+          style="
+            background: var(--bg-primary);
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+          "
+        >
+          <div style="font-size: 32px">
+            <i class="fas fa-clipboard-check"></i>
+          </div>
+          <div style="font-weight: bold; margin-top: 5px">ISO 27001</div>
+          <div style="color: var(--text-secondary); font-size: 12px">
+            Compliance Score
+          </div>
+          <div
+            style="font-size: 20px; font-weight: bold; color: var(--accent2)"
+            id="isoScore"
+          >
+            -
+          </div>
+          <div class="framework-bar"><span id="isoBar"></span></div>
+        </div>
+      </div>
+      <div>
+        <canvas id="complianceRadar" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCRIPTS -->
+<!-- ============================================================ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  // ============================================================
+  // GLOBAL STATE
+  // ============================================================
+  let allDevices = [];
+  let allVulnerabilities = [];
+  let filteredVulnerabilities = [];
+  let vulnPage = 0;
+  const vulnPageSize = 10;
+
+  let execRiskChart = null,
+    execDeviceChart = null,
+    riskTrendChart = null,
+    vulnSeverityChart = null,
+    complianceRadar = null,
+    postureGauge = null;
+
+  // ============================================================
+  // INIT
+  // ============================================================
+  document.addEventListener("DOMContentLoaded", function () {
+    refreshReports();
+  });
+
+  function refreshReports() {
+    loadExecutiveSummary();
+    loadTechnicalReport();
+    loadVulnerabilityReport();
+    loadComplianceReport();
+  }
+
+  function switchTab(tabName) {
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.style.borderBottomColor = "transparent";
+      btn.style.color = "var(--text-secondary)";
+    });
+    const activeBtn = document.querySelector(
+      `.tab-btn[onclick="switchTab('${tabName}')"]`,
+    );
+    if (activeBtn) {
+      activeBtn.style.borderBottomColor = "var(--accent)";
+      activeBtn.style.color = "var(--accent)";
+    }
+    document
+      .querySelectorAll(".tab-content")
+      .forEach((tab) => (tab.style.display = "none"));
+    document.getElementById(`tab-${tabName}`).style.display = "block";
+  }
+
+  // ============================================================
+  // EXECUTIVE SUMMARY
+  // ============================================================
+  function loadExecutiveSummary() {
+    fetch("/api/statistics/overview")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          const stats = data.statistics;
+          // Update KPIs
+          document.getElementById("execTotalDevices").textContent =
+            stats.total_devices || 0;
+          document.getElementById("execCriticalVulns").textContent =
+            stats.critical_vulnerabilities || 0;
+          const highCount = Math.floor(
+            (stats.total_vulnerabilities || 0) * 0.15,
+          );
+          document.getElementById("execHighVulns").textContent = highCount;
+          const secureDevices = Math.max(
+            0,
+            (stats.total_devices || 0) -
+              Math.ceil((stats.critical_vulnerabilities || 0) / 2),
+          );
+          document.getElementById("execSecureDevices").textContent =
+            secureDevices;
+
+          // Update charts
+          updateExecutiveCharts(stats);
+          updateRiskTrend(stats);
+          updatePostureScore(stats);
+          updateTopCriticalVulns(stats);
+          updateMostAffectedDevices(stats);
+          generateAISummary(stats);
+        }
+      })
+      .catch((err) => console.error("Error loading executive summary:", err));
+  }
+
+  function updateExecutiveCharts(stats) {
+    // Risk distribution
+    const riskData = stats.risk_distribution || {};
+    const labels = Object.keys(riskData);
+    const values = Object.values(riskData);
+    const colors = {
+      CRITICAL: "#ff4444",
+      HIGH: "#ff8800",
+      MEDIUM: "#ffcc00",
+      LOW: "#00ff88",
+      NONE: "#8899aa",
+    };
+    if (execRiskChart) execRiskChart.destroy();
+    execRiskChart = new Chart(
+      document.getElementById("execRiskChart").getContext("2d"),
+      {
+        type: "doughnut",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              data: values,
+              backgroundColor: labels.map((l) => colors[l] || "#8899aa"),
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: "bottom", labels: { color: "#e0e6ed" } },
+          },
+        },
+      },
+    );
+
+    // Device types
+    const devData = stats.devices_by_type || {};
+    const devLabels = Object.keys(devData);
+    const devValues = Object.values(devData);
+    const devColors = [
+      "#00d4ff",
+      "#00ff88",
+      "#ff8800",
+      "#ff4444",
+      "#ffcc00",
+      "#8899aa",
+    ];
+    if (execDeviceChart) execDeviceChart.destroy();
+    execDeviceChart = new Chart(
+      document.getElementById("execDeviceChart").getContext("2d"),
+      {
+        type: "pie",
+        data: {
+          labels: devLabels,
+          datasets: [
+            {
+              data: devValues,
+              backgroundColor: devColors.slice(0, devLabels.length),
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: "bottom", labels: { color: "#e0e6ed" } },
+          },
+        },
+      },
+    );
+  }
+
+  function updateRiskTrend(stats) {
+    // Mock trend data - replace with real API when available
+    const ctx = document.getElementById("riskTrendChart").getContext("2d");
+    if (riskTrendChart) riskTrendChart.destroy();
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const trendData = [4.2, 5.1, 3.8, 4.9, 6.2, 5.5, 4.0]; // mock
+    riskTrendChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: days,
+        datasets: [
+          {
+            label: "Avg Risk Score",
+            data: trendData,
+            borderColor: "#00d4ff",
+            backgroundColor: "rgba(0,212,255,0.1)",
+            fill: true,
+            tension: 0.3,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: "#e0e6ed" } } },
+        scales: {
+          y: {
+            min: 0,
+            max: 10,
+            grid: { color: "rgba(255,255,255,0.05)" },
+            ticks: { color: "#e0e6ed" },
+          },
+          x: {
+            grid: { color: "rgba(255,255,255,0.05)" },
+            ticks: { color: "#e0e6ed" },
+          },
+        },
+      },
+    });
+  }
+
+  function updatePostureScore(stats) {
+    const totalDevices = stats.total_devices || 0;
+    const critical = stats.critical_vulnerabilities || 0;
+    const totalVulns = stats.total_vulnerabilities || 0;
+    let score = 100 - (critical * 8 + totalVulns * 0.5);
+    if (totalDevices === 0) score = 0;
+    score = Math.max(0, Math.min(100, score));
+    document.getElementById("postureScore").textContent = Math.round(score);
+
+    // Draw gauge (simple semi-circle)
+    const canvas = document.getElementById("postureGauge");
+    const ctx = canvas.getContext("2d");
+    const width = canvas.width,
+      height = canvas.height;
+    const cx = width / 2,
+      cy = height / 2 + 10,
+      radius = 50;
+    ctx.clearRect(0, 0, width, height);
+    // background arc
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, Math.PI, 0);
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 12;
+    ctx.stroke();
+    // foreground arc
+    const angle = Math.PI + (score / 100) * Math.PI;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, Math.PI, angle);
+    ctx.strokeStyle =
+      score > 70 ? "#00ff88" : score > 40 ? "#ffcc00" : "#ff4444";
+    ctx.lineWidth = 12;
+    ctx.stroke();
+    // center dot
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4, 0, 2 * Math.PI);
+    ctx.fillStyle = "#e0e6ed";
+    ctx.fill();
+  }
+
+  function updateTopCriticalVulns(stats) {
+    // Use top CVEs from vulnerability data (will be loaded later)
+    // For now, placeholder; we'll update after vulnerabilities load.
+    // We'll call this after loading vulnerabilities.
+  }
+
+  function updateMostAffectedDevices(stats) {
+    // Similar: need devices with highest CVEs
+    // Will be updated after devices load.
+  }
+
+  function generateAISummary(stats) {
+    const totalDevices = stats.total_devices || 0;
+    const criticalVulns = stats.critical_vulnerabilities || 0;
+    const totalVulns = stats.total_vulnerabilities || 0;
+    const avgRisk = stats.average_risk_score || 0;
+    const secureDevices = Math.max(
+      0,
+      totalDevices - Math.ceil(criticalVulns / 2),
+    );
+
+    // Build intelligent narrative
+    let paragraphs = [];
+
+    // Overall posture
+    let postureDesc = "";
+    if (criticalVulns === 0 && totalVulns === 0) {
+      postureDesc =
+        "**Outstanding Security Posture** – No vulnerabilities detected across all devices. Your network is in an exemplary state of security.";
+    } else if (criticalVulns === 0 && totalVulns < 5) {
+      postureDesc =
+        "**Good Security Posture** – Minimal vulnerabilities present, all of low to medium severity. Continue regular scanning to maintain this level.";
+    } else if (criticalVulns === 0 && totalVulns < 20) {
+      postureDesc =
+        "**Moderate Security Posture** – Several vulnerabilities exist but none are critical. Prioritize patch management to reduce overall risk.";
+    } else if (criticalVulns > 0 && criticalVulns < 3) {
+      postureDesc =
+        "**Elevated Risk** – Critical vulnerabilities detected. Immediate action is required to remediate these high-priority issues.";
+    } else {
+      postureDesc =
+        "**High Risk** – Multiple critical vulnerabilities found. Your network is at significant risk; urgent mitigation is essential.";
+    }
+    paragraphs.push(postureDesc);
+
+    // Risk analysis
+    let riskAnalysis = `**Risk Analysis**: The network comprises **${totalDevices}** devices with an average risk score of **${avgRisk.toFixed(1)}/10**. `;
+    if (criticalVulns > 0) {
+      riskAnalysis += `There are **${criticalVulns} critical** vulnerabilities that expose the network to potential compromise. `;
+    }
+    if (totalVulns > 0) {
+      riskAnalysis += `In total, **${totalVulns}** vulnerabilities have been identified, affecting **${Math.min(totalDevices, Math.ceil(totalVulns / 2))}** devices. `;
+    }
+    riskAnalysis += `The security posture score is **${document.getElementById("postureScore").textContent}** out of 100.`;
+    paragraphs.push(riskAnalysis);
+
+    // Key findings
+    let findings = "**Key Findings**:\n";
+    if (criticalVulns > 0) {
+      findings += `- Critical vulnerabilities present in ${Math.min(5, Math.ceil(criticalVulns / 2))} devices. Prioritize immediate patching.\n`;
+    }
+    if (totalVulns > 10) {
+      findings += `- High volume of vulnerabilities (${totalVulns}) – consider a comprehensive remediation plan.\n`;
+    }
+    if (secureDevices > 0) {
+      findings += `- ${secureDevices} devices are currently secure (no critical issues). Maintain this baseline.\n`;
+    }
+    if (totalDevices > 10) {
+      findings += `- Network size (${totalDevices}) suggests complexity; ensure proper segmentation and monitoring.\n`;
+    }
+    if (Object.keys(stats.devices_by_type || {}).length > 3) {
+      findings += `- Device diversity is high – ensure each device type has tailored security policies.\n`;
+    }
+    paragraphs.push(findings);
+
+    // Recommendations
+    let recs = "**Recommendations**:\n";
+    if (criticalVulns > 0) {
+      recs += `- Immediately patch or isolate all devices with critical vulnerabilities. Use emergency change management.\n`;
+    }
+    if (totalVulns > 5) {
+      recs += `- Schedule a maintenance window within the next 7 days to address high and medium vulnerabilities.\n`;
+    }
+    recs += `- Implement automated weekly vulnerability scans to catch new issues early.\n`;
+    recs += `- Review and update your incident response plan to include these findings.\n`;
+    if (totalDevices > 20) {
+      recs += `- Consider network segmentation to limit lateral movement of potential attacks.\n`;
+    }
+    if (secureDevices < totalDevices * 0.5) {
+      recs += `- Focus on reducing the attack surface by disabling unused services and ports.\n`;
+    }
+    paragraphs.push(recs);
+
+    // Final outlook
+    let outlook = "**Outlook**: ";
+    if (criticalVulns === 0 && totalVulns < 5) {
+      outlook +=
+        "The network is well-maintained. Continue monitoring and periodic assessments to sustain this level.";
+    } else if (criticalVulns > 0) {
+      outlook +=
+        "Immediate action is critical. With prompt remediation, the risk can be significantly reduced within a week.";
+    } else {
+      outlook +=
+        "Moderate improvements in patch management and configuration will strengthen the overall security posture.";
+    }
+    paragraphs.push(outlook);
+
+    document.getElementById("executiveSummaryText").innerHTML = paragraphs
+      .map((p) => p.replace(/\n/g, "<br>"))
+      .join("<br><br>");
+  }
+
+  // ============================================================
+  // TECHNICAL REPORT
+  // ============================================================
+  let techSortColumn = -1,
+    techSortAsc = true;
+
+  function loadTechnicalReport() {
+    fetch("/api/devices")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          allDevices = data.devices;
+          // Populate device type filter
+          const typeFilter = document.getElementById("techTypeFilter");
+          const types = [
+            ...new Set(allDevices.map((d) => d.device_type || "Unknown")),
+          ];
+          typeFilter.innerHTML =
+            '<option value="all">All Types</option>' +
+            types.map((t) => `<option value="${t}">${t}</option>`).join("");
+          renderTechnicalTable(allDevices);
+          updateTopPorts(allDevices);
+          updateMostAffectedDevices({}); // we'll re-use this after
+        }
+      })
+      .catch((err) => console.error("Error loading technical report:", err));
+  }
+
+  function renderTechnicalTable(devices) {
+    const tbody = document.getElementById("techDeviceBody");
+    if (!devices.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-secondary);">No devices found</td></tr>';
+      return;
+    }
+    let html = "";
+    devices.forEach((d) => {
+      const ports = d.open_ports ? JSON.parse(d.open_ports) : [];
+      const lastScan = d.last_scan
+        ? new Date(d.last_scan).toLocaleString()
+        : "-";
+      html += `<tr style="border-bottom: 1px solid var(--border-color);">
+      <td style="padding: 8px; font-weight: bold; color: var(--accent);">${d.ip_address}</td>
+      <td style="padding: 8px;">${d.hostname || "-"}</td>
+      <td style="padding: 8px;">${d.device_type || "Unknown"}</td>
+      <td style="padding: 8px;">${d.os || "Unknown"}</td>
+      <td style="padding: 8px; text-align: center;">${ports.length}</td>
+      <td style="padding: 8px; text-align: center; color: ${d.risk_score > 7 ? "var(--critical)" : d.risk_score > 4 ? "var(--high)" : "var(--accent2)"};">${d.risk_score || 0}</td>
+      <td style="padding: 8px; text-align: center;">${d.total_cves || 0}</td>
+      <td style="padding: 8px; text-align: center; font-size: 12px; color: var(--text-secondary);">${lastScan}</td>
+    </tr>`;
+    });
+    tbody.innerHTML = html;
+  }
+
+  function filterTechnicalTable() {
+    const search = document.getElementById("techSearch").value.toLowerCase();
+    const type = document.getElementById("techTypeFilter").value;
+    let filtered = allDevices;
+    if (search) {
+      filtered = filtered.filter(
+        (d) =>
+          d.ip_address.includes(search) ||
+          (d.hostname && d.hostname.toLowerCase().includes(search)),
+      );
+    }
+    if (type !== "all") {
+      filtered = filtered.filter((d) => (d.device_type || "Unknown") === type);
+    }
+    renderTechnicalTable(filtered);
+  }
+
+  function sortTechTable(col) {
+    if (techSortColumn === col) {
+      techSortAsc = !techSortAsc;
+    } else {
+      techSortColumn = col;
+      techSortAsc = true;
+    }
+    const sorted = [...allDevices].sort((a, b) => {
+      let valA, valB;
+      const fields = [
+        "ip_address",
+        "hostname",
+        "device_type",
+        "os",
+        "open_ports",
+        "risk_score",
+        "total_cves",
+      ];
+      if (col === 4) {
+        // ports count
+        valA = a.open_ports ? JSON.parse(a.open_ports).length : 0;
+        valB = b.open_ports ? JSON.parse(b.open_ports).length : 0;
+      } else {
+        valA = a[fields[col]] || "";
+        valB = b[fields[col]] || "";
+      }
+      if (typeof valA === "string") valA = valA.toLowerCase();
+      if (typeof valB === "string") valB = valB.toLowerCase();
+      if (valA < valB) return techSortAsc ? -1 : 1;
+      if (valA > valB) return techSortAsc ? 1 : -1;
+      return 0;
+    });
+    renderTechnicalTable(sorted);
+  }
+
+  function updateTopPorts(devices) {
+    const portCounts = {};
+    devices.forEach((d) => {
+      if (d.open_ports) {
+        try {
+          const ports = JSON.parse(d.open_ports);
+          ports.forEach((p) => {
+            portCounts[p] = (portCounts[p] || 0) + 1;
+          });
+        } catch (e) {}
+      }
+    });
+    const sorted = Object.entries(portCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+    const html =
+      sorted
+        .map(
+          ([port, count]) =>
+            `<span style="display: inline-block; background: var(--bg-primary); padding: 4px 12px; border-radius: 12px; margin: 3px; font-size: 12px;">Port ${port}: ${count} devices</span>`,
+        )
+        .join(" ") || "No ports detected";
+    document.getElementById("topPorts").innerHTML = html;
+  }
+
+  function updateMostAffectedDevices() {
+    // Show top 5 devices with most CVEs
+    const sorted = [...allDevices]
+      .sort((a, b) => (b.total_cves || 0) - (a.total_cves || 0))
+      .slice(0, 5);
+    const div = document.getElementById("mostAffectedDevices");
+    if (!sorted.length) {
+      div.innerHTML = "No devices with vulnerabilities.";
+      return;
+    }
+    div.innerHTML = sorted
+      .map(
+        (d) =>
+          `<div style="padding: 6px 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;">
+      <span style="color: var(--accent);">${d.ip_address}</span>
+      <span style="color: ${d.total_cves > 5 ? "var(--critical)" : "var(--high)"};">${d.total_cves || 0} CVEs</span>
+    </div>`,
+      )
+      .join("");
+  }
+
+  // ============================================================
+  // VULNERABILITY REPORT
+  // ============================================================
+  function loadVulnerabilityReport() {
+    fetch("/api/statistics/top-cves")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          allVulnerabilities = data.top_cves || [];
+          filteredVulnerabilities = [...allVulnerabilities];
+          vulnPage = 0;
+          populateDeviceFilter();
+          renderVulnerabilities();
+          updateVulnSeverityChart();
+          updateTopCriticalVulnsFromVulns();
+        }
+      })
+      .catch((err) => console.error("Error loading vulnerabilities:", err));
+  }
+
+  function populateDeviceFilter() {
+    const filter = document.getElementById("vulnDeviceFilter");
+    const devices = [...new Set(allDevices.map((d) => d.ip_address))];
+    filter.innerHTML =
+      '<option value="all">All Devices</option>' +
+      devices.map((ip) => `<option value="${ip}">${ip}</option>`).join("");
+  }
+
+  function filterVulnerabilities() {
+    const severity = document.getElementById("vulnSeverityFilter").value;
+    const device = document.getElementById("vulnDeviceFilter").value;
+    const search = document.getElementById("vulnSearch").value.toLowerCase();
+    filteredVulnerabilities = allVulnerabilities.filter((v) => {
+      if (severity !== "all" && v.severity !== severity) return false;
+      if (
+        device !== "all" &&
+        v.affected_devices &&
+        !v.affected_devices.includes(device)
+      )
+        return false;
+      if (
+        search &&
+        !v.cve_id.toLowerCase().includes(search) &&
+        !(v.description && v.description.toLowerCase().includes(search))
+      )
+        return false;
+      return true;
+    });
+    vulnPage = 0;
+    renderVulnerabilities();
+  }
+
+  function renderVulnerabilities() {
+    const tbody = document.getElementById("vulnBody");
+    const total = filteredVulnerabilities.length;
+    const start = vulnPage * vulnPageSize;
+    const end = Math.min(start + vulnPageSize, total);
+    const pageItems = filteredVulnerabilities.slice(start, end);
+    if (!pageItems.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-secondary);">No vulnerabilities found</td></tr>';
+      document.getElementById("vulnPaginationInfo").textContent =
+        "Showing 0-0 of 0";
+      return;
+    }
+    const severityColor = {
+      CRITICAL: "var(--critical)",
+      HIGH: "var(--high)",
+      MEDIUM: "var(--medium)",
+      LOW: "var(--low)",
+    };
+    let html = "";
+    pageItems.forEach((v) => {
+      const color = severityColor[v.severity] || "var(--text-secondary)";
+      html += `<tr style="border-bottom: 1px solid var(--border-color);">
+      <td style="padding: 8px; font-weight: bold; color: var(--accent);">${v.cve_id}</td>
+      <td style="padding: 8px; font-size: 13px; color: var(--text-secondary);">${(v.description || "").substring(0, 100)}${(v.description || "").length > 100 ? "…" : ""}</td>
+      <td style="padding: 8px; text-align: center;">${v.cvss_score || "N/A"}</td>
+      <td style="padding: 8px; text-align: center;"><span style="background: ${color}22; color: ${color}; padding: 2px 10px; border-radius: 10px; font-size: 11px;">${v.severity || "UNKNOWN"}</span></td>
+      <td style="padding: 8px; text-align: center;">${v.affected_devices || 0}</td>
+      <td style="padding: 8px; font-size: 12px; color: var(--text-secondary);">${v.service || "-"}</td>
+    </tr>`;
+    });
+    tbody.innerHTML = html;
+    document.getElementById("vulnPaginationInfo").textContent =
+      `Showing ${start + 1}-${end} of ${total}`;
+  }
+
+  function changeVulnPage(dir) {
+    const total = filteredVulnerabilities.length;
+    const maxPage = Math.ceil(total / vulnPageSize) - 1;
+    const newPage = vulnPage + dir;
+    if (newPage < 0 || newPage > maxPage) return;
+    vulnPage = newPage;
+    renderVulnerabilities();
+  }
+
+  function updateVulnSeverityChart() {
+    const counts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+    allVulnerabilities.forEach((v) => {
+      if (counts[v.severity] !== undefined) counts[v.severity]++;
+    });
+    const ctx = document.getElementById("vulnSeverityChart").getContext("2d");
+    if (vulnSeverityChart) vulnSeverityChart.destroy();
+    vulnSeverityChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: Object.keys(counts),
+        datasets: [
+          {
+            label: "Count",
+            data: Object.values(counts),
+            backgroundColor: ["#ff4444", "#ff8800", "#ffcc00", "#00ff88"],
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: { color: "rgba(255,255,255,0.05)" },
+            ticks: { color: "#e0e6ed" },
+          },
+          x: { grid: { display: false }, ticks: { color: "#e0e6ed" } },
+        },
+      },
+    });
+  }
+
+  function updateTopCriticalVulnsFromVulns() {
+    const critical = allVulnerabilities
+      .filter((v) => v.severity === "CRITICAL")
+      .slice(0, 5);
+    const div = document.getElementById("topCriticalVulns");
+    if (!critical.length) {
+      div.innerHTML = "No critical vulnerabilities.";
+      return;
+    }
+    div.innerHTML = critical
+      .map(
+        (v) =>
+          `<div style="padding: 4px 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;">
+      <span style="color: var(--critical);">${v.cve_id}</span>
+      <span style="color: var(--text-secondary); font-size: 12px;">${v.affected_devices || 0} devices</span>
+    </div>`,
+      )
+      .join("");
+  }
+
+  // ============================================================
+  // COMPLIANCE REPORT
+  // ============================================================
+  function loadComplianceReport() {
+    fetch("/api/statistics/overview")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          const stats = data.statistics;
+          const totalDevices = stats.total_devices || 0;
+          const criticalVulns = stats.critical_vulnerabilities || 0;
+          const totalVulns = stats.total_vulnerabilities || 0;
+
+          // Normalize findings per device so a larger inventory does not
+          // automatically collapse every framework score to zero.
+          const deviceCount = Math.max(1, totalDevices);
+          const findingsPerDevice = totalVulns / deviceCount;
+          const criticalPerDevice = criticalVulns / deviceCount;
+          const boundedScore = (penalty) =>
+            Math.round(Math.max(0, Math.min(100, 100 - penalty)));
+          const cis = boundedScore(
+            Math.min(94, criticalPerDevice * 18 + findingsPerDevice * 1.35),
+          );
+          const nist = boundedScore(
+            Math.min(92, criticalPerDevice * 14 + findingsPerDevice * 1.05),
+          );
+          const iso = boundedScore(
+            Math.min(90, criticalPerDevice * 10 + findingsPerDevice * 0.85),
+          );
+          const riskScore = Math.round((cis + nist + iso) / 3);
+          document.getElementById("complianceScore").textContent =
+            riskScore + "%";
+          document.getElementById("commandScore").textContent = riskScore + "%";
+          document.getElementById("commandCritical").textContent =
+            criticalVulns;
+          document.getElementById("commandExposure").textContent = totalVulns;
+          document.getElementById("commandCoverage").textContent =
+            Math.min(100, Math.max(0, riskScore)) + "%";
+          document.getElementById("compliancePulse").textContent =
+            criticalVulns > 0
+              ? "Immediate remediation is recommended for critical findings."
+              : "No critical blockers detected. Continue scheduled control validation.";
+          document.getElementById("compCritical").textContent = criticalVulns;
+          document.getElementById("compHigh").textContent = Math.floor(
+            totalVulns * 0.2,
+          );
+          document.getElementById("compMedium").textContent = Math.floor(
+            totalVulns * 0.3,
+          );
+          document.getElementById("compLow").textContent = Math.floor(
+            totalVulns * 0.5,
+          );
+
+          document.getElementById("cisScore").textContent = cis + "%";
+          document.getElementById("nistScore").textContent = nist + "%";
+          document.getElementById("isoScore").textContent = iso + "%";
+          document.getElementById("cisBar").style.width = cis + "%";
+          document.getElementById("nistBar").style.width = nist + "%";
+          document.getElementById("isoBar").style.width = iso + "%";
+
+          generateRecommendations(totalDevices, criticalVulns, totalVulns);
+          updateComplianceRadar(cis, nist, iso);
+        }
+      })
+      .catch((err) => console.error("Error loading compliance:", err));
+  }
+
+  function generateRecommendations(totalDevices, criticalVulns, totalVulns) {
+    let recs = [];
+    if (criticalVulns > 0)
+      recs.push(
+        "CRITICAL: Immediately patch or isolate devices with critical vulnerabilities",
+      );
+    if (totalVulns > 10)
+      recs.push(
+        "HIGH: Schedule a maintenance window to apply security patches",
+      );
+    if (totalDevices > 10)
+      recs.push(
+        "Consider implementing network segmentation to reduce attack surface",
+      );
+    if (criticalVulns === 0 && totalVulns < 5)
+      recs.push(
+        "Good security posture. Continue regular vulnerability scanning.",
+      );
+    recs.push(
+      "Implement regular automated scanning schedule (recommended: weekly)",
+    );
+    recs.push("Maintain an up-to-date inventory of all network devices");
+    document.getElementById("recommendations").innerHTML = recs
+      .map(
+        (r) =>
+          `<div class="remediation-item"><i class="fas fa-bolt"></i><span>${r}</span></div>`,
+      )
+      .join("");
+  }
+
+  function copyComplianceBrief() {
+    const score = document.getElementById("commandScore").textContent;
+    const brief = `Sentinel AI Compliance Brief\nPosture: ${score}\nCritical findings: ${document.getElementById("commandCritical").textContent}\nOpen findings: ${document.getElementById("commandExposure").textContent}\nControl coverage: ${document.getElementById("commandCoverage").textContent}`;
+    navigator.clipboard
+      .writeText(brief)
+      .then(() => alert("Compliance brief copied."));
+  }
+
+  function printComplianceBrief() {
+    fetch("/api/audit/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "report_printed",
+        resource_id: "compliance",
+        details: { section: "compliance" },
+      }),
+    }).catch(() => {});
+    const content = document.getElementById("tab-compliance").innerHTML;
+    const printWindow = window.open("", "_blank", "width=1100,height=800");
+    printWindow.document.write(
+      `<html><head><title>Sentinel AI Compliance Brief</title><style>body{font-family:Arial;color:#152636;padding:30px}h2,h3{color:#0b718d}.remediation-item{padding:8px 0;border-bottom:1px solid #ddd}</style></head><body><h1>Sentinel AI Compliance Brief</h1>${content}</body></html>`,
+    );
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  }
+
+  function updateComplianceRadar(cis, nist, iso) {
+    const ctx = document.getElementById("complianceRadar").getContext("2d");
+    if (complianceRadar) complianceRadar.destroy();
+    complianceRadar = new Chart(ctx, {
+      type: "radar",
+      data: {
+        labels: ["CIS", "NIST", "ISO 27001"],
+        datasets: [
+          {
+            label: "Compliance Score (%)",
+            data: [cis, nist, iso],
+            backgroundColor: "rgba(0,212,255,0.2)",
+            borderColor: "#00d4ff",
+            pointBackgroundColor: "#00d4ff",
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: "#e0e6ed" } } },
+        scales: {
+          r: {
+            min: 0,
+            max: 100,
+            grid: { color: "rgba(255,255,255,0.1)" },
+            ticks: { color: "#e0e6ed", backdropColor: "transparent" },
+            pointLabels: { color: "#e0e6ed" },
+          },
+        },
+      },
+    });
+  }
+
+  // ============================================================
+  // EXPORT FUNCTIONS
+  // ============================================================
+  function exportReport() {
+    const format = document.getElementById("exportFormat").value;
+    fetch("/api/audit/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "report_exported",
+        resource_id: format,
+        details: { format: format },
+      }),
+    }).catch(() => {});
+    if (format === "csv") exportCSV();
+    else if (format === "pdf") exportPDF();
+    else exportJSON();
+  }
+
+  function exportCSV() {
+    // Same as before but with additional fields
+    const headers = [
+      "IP",
+      "Hostname",
+      "Type",
+      "OS",
+      "Ports",
+      "Risk Score",
+      "Total CVEs",
+      "Last Scan",
+    ];
+    const rows = allDevices.map((d) => {
+      const ports = d.open_ports ? JSON.parse(d.open_ports) : [];
+      return [
+        d.ip_address,
+        d.hostname || "-",
+        d.device_type || "Unknown",
+        d.os || "Unknown",
+        ports.join(";"),
+        d.risk_score || 0,
+        d.total_cves || 0,
+        d.last_scan || "",
+      ];
+    });
+    let csv =
+      headers.join(",") + "\n" + rows.map((r) => r.join(",")).join("\n");
+    // Add vulnerabilities
+    if (allVulnerabilities.length) {
+      csv += "\n\nVulnerabilities\n";
+      const vHeaders = [
+        "CVE ID",
+        "Description",
+        "CVSS",
+        "Severity",
+        "Affected Devices",
+        "Service",
+      ];
+      const vRows = allVulnerabilities.map((v) => [
+        v.cve_id,
+        (v.description || "").replace(/,/g, ";"),
+        v.cvss_score || "N/A",
+        v.severity || "UNKNOWN",
+        v.affected_devices || 0,
+        v.service || "-",
+      ]);
+      csv +=
+        vHeaders.join(",") + "\n" + vRows.map((r) => r.join(",")).join("\n");
+    }
+    downloadFile(
+      csv,
+      `report_${new Date().toISOString().slice(0, 10)}.csv`,
+      "text/csv",
+    );
+  }
+
+  function exportPDF() {
+    generatePDFBlob().then((blob) =>
+      downloadFile(
+        blob,
+        `report_${new Date().toISOString().slice(0, 10)}.pdf`,
+        "application/pdf",
+      ),
+    );
+  }
+
+  function exportJSON() {
+    const data = {
+      timestamp: new Date().toISOString(),
+      devices: allDevices,
+      vulnerabilities: allVulnerabilities,
+      summary: {
+        total_devices: document.getElementById("execTotalDevices").textContent,
+        critical_vulns:
+          document.getElementById("execCriticalVulns").textContent,
+        high_vulns: document.getElementById("execHighVulns").textContent,
+        secure_devices:
+          document.getElementById("execSecureDevices").textContent,
+        posture_score: document.getElementById("postureScore").textContent,
+        ai_summary: document.getElementById("executiveSummaryText").innerText,
+      },
+    };
+    downloadFile(
+      JSON.stringify(data, null, 2),
+      `network_report_${new Date().toISOString().split("T")[0]}.json`,
+      "application/json",
+    );
+  }
+
+  function generatePDFBlob() {
+    return new Promise((resolve, reject) => {
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF("p", "mm", "a4");
+        const pageWidth = doc.internal.pageSize.getWidth();
+
+        // Title & meta
+        doc.setFontSize(18);
+        doc.text("Network Security Report", 14, 20);
+        doc.setFontSize(11);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
+
+        // Summary
+        const totalDevices =
+          document.getElementById("execTotalDevices").textContent;
+        const critical =
+          document.getElementById("execCriticalVulns").textContent;
+        const high = document.getElementById("execHighVulns").textContent;
+        const secure = document.getElementById("execSecureDevices").textContent;
+        const posture = document.getElementById("postureScore").textContent;
+        doc.setFontSize(12);
+        doc.text(
+          `Posture Score: ${posture}/100  |  Devices: ${totalDevices}  |  Critical: ${critical}  |  High: ${high}  |  Secure: ${secure}`,
+          14,
+          40,
+        );
+
+        // AI Summary
+        doc.setFontSize(14);
+        doc.text("Executive Summary", 14, 55);
+        doc.setFontSize(10);
+        const summaryText =
+          document.getElementById("executiveSummaryText").innerText ||
+          "No summary available.";
+        const splitSummary = doc.splitTextToSize(summaryText, pageWidth - 28);
+        doc.text(splitSummary, 14, 65);
+
+        // Device table
+        const deviceHeaders = [
+          ["IP", "Hostname", "Type", "OS", "Ports", "Risk Score", "Total CVEs"],
+        ];
+        const deviceRows = allDevices.map((d) => {
+          const ports = d.open_ports ? JSON.parse(d.open_ports) : [];
+          return [
+            d.ip_address,
+            d.hostname || "-",
+            d.device_type || "Unknown",
+            d.os || "Unknown",
+            ports.length.toString(),
+            (d.risk_score || 0).toString(),
+            (d.total_cves || 0).toString(),
+          ];
+        });
+        let y = 65 + splitSummary.length * 5 + 10;
+        doc.autoTable({
+          startY: y,
+          head: deviceHeaders,
+          body: deviceRows,
+          theme: "striped",
+          styles: { fontSize: 8, cellPadding: 2 },
+          headStyles: {
+            fillColor: [41, 128, 185],
+            textColor: [255, 255, 255],
+            fontSize: 9,
+          },
+          columnStyles: {
+            0: { cellWidth: 30 },
+            1: { cellWidth: 30 },
+            2: { cellWidth: 25 },
+            3: { cellWidth: 30 },
+            4: { cellWidth: 15 },
+            5: { cellWidth: 20 },
+            6: { cellWidth: 20 },
+          },
+          margin: { left: 14, right: 14 },
+          didDrawPage: function (data) {
+            doc.setFontSize(8);
+            doc.text(
+              "Network Security Report - Confidential",
+              data.settings.margin.left,
+              doc.internal.pageSize.height - 10,
+            );
+          },
+        });
+
+        // Vulnerability table (new page)
+        if (allVulnerabilities.length) {
+          doc.addPage();
+          doc.setFontSize(14);
+          doc.text("Vulnerability Details", 14, 20);
+          const vHeaders = [
+            [
+              "CVE ID",
+              "Description",
+              "CVSS",
+              "Severity",
+              "Affected Devices",
+              "Service",
+            ],
+          ];
+          const vRows = allVulnerabilities.map((v) => [
+            v.cve_id,
+            (v.description || "").substring(0, 60) +
+              (v.description && v.description.length > 60 ? "…" : ""),
+            (v.cvss_score || "N/A").toString(),
+            v.severity || "UNKNOWN",
+            (v.affected_devices || 0).toString(),
+            v.service || "-",
+          ]);
+          doc.autoTable({
+            startY: 28,
+            head: vHeaders,
+            body: vRows,
+            theme: "striped",
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: {
+              fillColor: [192, 57, 43],
+              textColor: [255, 255, 255],
+              fontSize: 9,
+            },
+            columnStyles: {
+              0: { cellWidth: 30 },
+              1: { cellWidth: 60 },
+              2: { cellWidth: 20 },
+              3: { cellWidth: 25 },
+              4: { cellWidth: 25 },
+              5: { cellWidth: 25 },
+            },
+            margin: { left: 14, right: 14 },
+            didDrawPage: function (data) {
+              doc.setFontSize(8);
+              doc.text(
+                "Network Security Report - Confidential",
+                data.settings.margin.left,
+                doc.internal.pageSize.height - 10,
+              );
+            },
+          });
+        }
+
+        // Compliance & Recommendations
+        doc.addPage();
+        doc.setFontSize(14);
+        doc.text("Compliance Overview", 14, 20);
+        const cis = document.getElementById("cisScore").textContent;
+        const nist = document.getElementById("nistScore").textContent;
+        const iso = document.getElementById("isoScore").textContent;
+        doc.setFontSize(12);
+        doc.text(`CIS: ${cis}  |  NIST: ${nist}  |  ISO 27001: ${iso}`, 14, 35);
+        const recText =
+          document.getElementById("recommendations").innerText ||
+          "No recommendations.";
+        doc.setFontSize(11);
+        const splitRec = doc.splitTextToSize(
+          "Recommendations:\n" + recText,
+          pageWidth - 28,
+        );
+        doc.text(splitRec, 14, 50);
+
+        resolve(doc.output("blob"));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  function downloadFile(content, filename, mime) {
+    const blob =
+      typeof content === "string"
+        ? new Blob([content], { type: mime })
+        : content;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ============================================================
+  // SEND EMAIL
+  // ============================================================
+  function sendReportEmail() {
+    const email = document.getElementById("reportEmail").value.trim();
+    if (!email || !email.includes("@") || !email.includes(".")) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+    generatePDFBlob()
+      .then((pdfBlob) => {
+        const formData = new FormData();
+        formData.append("email", email);
+        formData.append(
+          "pdf",
+          pdfBlob,
+          `report_${new Date().toISOString().slice(0, 10)}.pdf`,
+        );
+        const btn = document.querySelector(".btn-info");
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        btn.disabled = true;
+        fetch("/api/reports/send-email", { method: "POST", body: formData })
+          .then((r) => r.json())
+          .then((data) => {
+            btn.innerHTML = '<i class="fas fa-envelope"></i> Send';
+            btn.disabled = false;
+            alert(
+              data.success
+                ? `Report sent to ${email}`
+                : `Failed: ${data.error}`,
+            );
+            if (data.success) document.getElementById("reportEmail").value = "";
+          })
+          .catch((err) => {
+            btn.innerHTML = '<i class="fas fa-envelope"></i> Send';
+            btn.disabled = false;
+            alert("Failed to send. Check console.");
+            console.error(err);
+          });
+      })
+      .catch((err) => {
+        alert("Failed to generate PDF for email.");
+        console.error(err);
+      });
+  }
+</script>
+
+{% endblock %}

@@ -1,0 +1,284 @@
+2026-07-17 13:50:04 - network_scanner - INFO - Database initialized successfully.
+2026-07-17 13:50:04 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-17 13:50:04 - network_scanner - INFO - Initializing database...
+2026-07-17 13:50:04 - network_scanner - INFO - Database initialized successfully.
+2026-07-17 13:50:04 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-17 13:50:04 - network_scanner - INFO - Database initialized successfully!
+2026-07-17 13:50:11 - network_scanner - INFO - Database initialized successfully.
+2026-07-17 13:50:11 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-17 13:50:12 - network_scanner - INFO - Starting quick scan on 192.168.1.0/24
+2026-07-17 13:50:12 - network_scanner - ERROR - Nmap verification failed: [WinError 2] The system cannot find the file specified
+2026-07-17 13:53:35 - network_scanner - INFO - Database initialized successfully.
+2026-07-17 13:53:35 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-17 13:53:35 - network_scanner - INFO - Starting quick scan on 192.168.1.0/24
+2026-07-17 13:53:35 - network_scanner - ERROR - Nmap verification failed: [WinError 2] The system cannot find the file specified
+2026-07-17 13:54:40 - network_scanner - INFO - Database initialized successfully.
+2026-07-17 13:54:40 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-17 13:54:40 - network_scanner - INFO - Starting quick scan on 192.168.1.0/24
+2026-07-17 13:54:40 - network_scanner - ERROR - Nmap verification failed: [WinError 2] The system cannot find the file specified
+2026-07-17 13:59:08 - network_scanner - INFO - Database initialized successfully.
+2026-07-17 13:59:08 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-17 13:59:08 - network_scanner - INFO - Starting quick scan on 192.168.1.0/24
+2026-07-17 13:59:08 - network_scanner - ERROR - Nmap verification failed: [WinError 2] The system cannot find the file specified
+2026-07-17 14:00:33 - network_scanner - INFO - Database initialized successfully.
+2026-07-17 14:00:33 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-17 14:00:33 - network_scanner - INFO - Starting quick scan on 192.168.1.0/24
+2026-07-17 14:00:33 - network_scanner - INFO - Nmap verified successfully.
+2026-07-17 14:00:33 - network_scanner - INFO - Discovering hosts on 192.168.1.0/24
+2026-07-17 14:00:53 - network_scanner - INFO - Found 256 hosts
+2026-07-17 14:00:53 - network_scanner - INFO - Scanning 192.168.1.1
+2026-07-17 14:00:53 - network_scanner - ERROR - 'Only 1 -p option allowed, separate multiple ranges with commas.\r\nQUITTING!\r\n'
+2026-07-17 14:00:53 - network_scanner - INFO - Scanning 192.168.1.2
+2026-07-17 14:00:53 - network_scanner - ERROR - 'Only 1 -p option allowed, separate multiple ranges with commas.\r\nQUITTING!\r\n'
+2026-07-17 14:00:53 - network_scanner - INFO - Scanning 192.168.1.3
+2026-07-17 14:00:53 - network_scanner - ERROR - 'Only 1 -p option allowed, separate multiple ranges with commas.\r\nQUITTING!\r\n'
+2026-07-17 14:00:53 - network_scanner - INFO - Scanning 192.168.1.4
+2026-07-17 14:00:54 - network_scanner - ERROR - 'Only 1 -p option allowed, separate multiple ranges with commas.\r\nQUITTING!\r\n'
+2026-07-17 14:00:54 - network_scanner - INFO - Scanning 192.168.1.5
+2026-07-17 14:00:54 - network_scanner - ERROR - 'Only 1 -p option allowed, separate multiple ranges with commas.\r\nQUITTING!\r\n'
+2026-07-17 14:00:54 - network_scanner - INFO - Scan completed successfully!
+2026-07-17 14:00:54 - network_scanner - INFO - Saving results to database...
+2026-07-17 14:00:54 - network_scanner - INFO - Results saved to database
+2026-07-17 14:01:28 - network_scanner - INFO - Database initialized successfully.
+2026-07-17 14:01:28 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-17 14:01:28 - network_scanner - INFO - ============================================================
+2026-07-17 14:01:28 - network_scanner - INFO - AI Network Scanner - Test Scan
+2026-07-17 14:01:28 - network_scanner - INFO - ============================================================
+2026-07-17 14:01:28 - network_scanner - INFO - Nmap verified successfully.
+2026-07-17 14:01:49 - network_scanner - INFO - Starting scan on target: 192.168.1.0/24
+2026-07-17 14:01:49 - network_scanner - INFO - Discovering hosts on 192.168.1.0/24
+2026-07-17 14:02:01 - network_scanner - INFO - Found 256 hosts
+2026-07-17 14:02:01 - network_scanner - INFO - Scanning 192.168.1.1
+2026-07-17 14:02:01 - network_scanner - ERROR - 'Only 1 -p option allowed, separate multiple ranges with commas.\r\nQUITTING!\r\n'
+2026-07-17 14:02:01 - network_scanner - INFO - Scanning 192.168.1.2
+2026-07-17 14:02:01 - network_scanner - ERROR - 'Only 1 -p option allowed, separate multiple ranges with commas.\r\nQUITTING!\r\n'
+2026-07-17 14:02:01 - network_scanner - INFO - Scanning 192.168.1.5
+2026-07-17 14:02:01 - network_scanner - ERROR - 'Only 1 -p option allowed, separate multiple ranges with commas.\r\nQUITTING!\r\n'
+2026-07-17 14:02:01 - network_scanner - INFO - Saved 256 hosts to database
+2026-07-17 14:02:01 - network_scanner - INFO - 
+============================================================
+2026-07-17 14:02:01 - network_scanner - INFO - SCAN RESULTS
+2026-07-17 14:02:01 - network_scanner - INFO - ============================================================
+2026-07-17 14:02:01 - network_scanner - INFO - 
+============================================================
+2026-07-17 14:02:01 - network_scanner - INFO - SUMMARY
+2026-07-17 14:02:01 - network_scanner - INFO - ============================================================
+2026-07-17 14:02:01 - network_scanner - INFO - Total Hosts: 256
+2026-07-17 14:02:01 - network_scanner - INFO - Up Hosts: 3
+2026-07-17 14:02:01 - network_scanner - INFO - Total Services: 0
+2026-07-17 14:02:01 - network_scanner - INFO - Open Ports: 0
+2026-07-17 14:02:01 - network_scanner - INFO - 
+============================================================
+2026-07-17 14:02:01 - network_scanner - INFO - DATABASE CONTENTS
+2026-07-17 14:02:01 - network_scanner - INFO - ============================================================
+2026-07-17 14:02:01 - network_scanner - INFO - 
+Hosts (3):
+2026-07-17 14:02:01 - network_scanner - INFO -   - 192.168.1.1 (up) OS: Unknown
+2026-07-17 14:02:01 - network_scanner - INFO -   - 192.168.1.2 (up) OS: Unknown
+2026-07-17 14:02:01 - network_scanner - INFO -   - 192.168.1.5 (up) OS: Unknown
+2026-07-17 14:02:01 - network_scanner - INFO - 
+Scans (1):
+2026-07-17 14:02:01 - network_scanner - INFO -   - scan_20260717_140201 - quick - 192.168.1.0/24 - completed
+2026-07-17 14:02:45 - network_scanner - INFO - Database initialized successfully.
+2026-07-17 14:02:45 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-17 14:02:45 - network_scanner - INFO - ============================================================
+2026-07-17 14:02:45 - network_scanner - INFO - AI Network Scanner - Test Scan
+2026-07-17 14:02:45 - network_scanner - INFO - ============================================================
+2026-07-17 14:02:45 - network_scanner - INFO - Nmap verified successfully.
+2026-07-17 14:02:48 - network_scanner - INFO - 
+Scan cancelled by user
+2026-07-17 14:02:53 - network_scanner - INFO - Database initialized successfully.
+2026-07-17 14:02:53 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-17 14:02:53 - network_scanner - INFO - System Status:
+2026-07-17 14:02:53 - network_scanner - INFO -   - Database: sqlite:///C:\Users\HP\Downloads\networkscanner/data/network_scanner.db
+2026-07-17 14:02:53 - network_scanner - INFO -   - Debug Mode: True
+2026-07-17 14:02:53 - network_scanner - INFO -   - Nmap Path: C:\Program Files (x86)\Nmap\nmap.exe
+2026-07-17 14:02:53 - network_scanner - INFO - Nmap verified successfully.
+2026-07-18 17:15:43 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 17:15:43 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 17:16:12 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 17:16:12 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 17:16:49 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 17:16:49 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 17:16:49 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 17:16:49 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 17:17:14 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 17:17:14 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 17:17:14 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 17:17:14 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 17:17:38 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 17:17:38 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 17:17:38 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 17:17:38 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 17:21:38 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 17:21:38 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 17:21:38 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 17:21:38 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 17:21:38 - network_scanner - INFO - Database connection closed.
+2026-07-18 17:22:06 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 17:22:06 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 17:22:06 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 17:22:06 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 17:22:06 - network_scanner - INFO - Database connection closed.
+2026-07-18 17:22:26 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 17:22:26 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 17:22:26 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 17:22:26 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 17:22:26 - network_scanner - INFO - Database connection closed.
+2026-07-18 17:22:57 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 17:22:57 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 17:22:57 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 17:22:57 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 17:22:57 - network_scanner - INFO - Database connection closed.
+2026-07-18 18:03:00 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 18:03:00 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 18:03:17 - network_scanner - INFO - ============================================================
+2026-07-18 18:03:17 - network_scanner - INFO - TRAINING DEVICE CLASSIFIER
+2026-07-18 18:03:17 - network_scanner - INFO - ============================================================
+2026-07-18 18:03:17 - network_scanner - INFO - No labeled data found. Using sample dataset...
+2026-07-18 18:03:17 - network_scanner - INFO - Dataset: 10 samples, 28 features
+2026-07-18 18:03:17 - network_scanner - INFO - 
+Label distribution:
+2026-07-18 18:03:17 - network_scanner - INFO -   router: 2
+2026-07-18 18:03:17 - network_scanner - INFO -   server: 2
+2026-07-18 18:03:17 - network_scanner - INFO -   workstation: 2
+2026-07-18 18:03:17 - network_scanner - INFO -   iot: 2
+2026-07-18 18:03:17 - network_scanner - INFO -   printer: 1
+2026-07-18 18:03:17 - network_scanner - INFO -   camera: 1
+2026-07-18 18:03:17 - network_scanner - INFO - Dataset saved to: data\datasets\device_dataset_20260718_180317.csv
+2026-07-18 18:03:17 - network_scanner - ERROR - Training failed: The least populated class in y has only 1 member, which is too few. The minimum number of groups for any class cannot be less than 2.
+2026-07-18 18:07:05 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 18:07:05 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 18:07:05 - network_scanner - INFO - Database initialized successfully.
+2026-07-18 18:07:05 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-18 18:07:05 - network_scanner - INFO - Database connection closed.
+2026-07-19 11:00:46 - network_scanner - INFO - Database initialized successfully.
+2026-07-19 11:00:46 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-19 11:01:04 - network_scanner - INFO - Database initialized successfully.
+2026-07-19 11:01:04 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-19 11:01:23 - network_scanner - INFO - Database initialized successfully.
+2026-07-19 11:01:23 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-19 11:01:44 - network_scanner - INFO - Database initialized successfully.
+2026-07-19 11:01:44 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-19 11:02:03 - network_scanner - INFO - Database initialized successfully.
+2026-07-19 11:02:03 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-19 11:02:24 - network_scanner - INFO - Database initialized successfully.
+2026-07-19 11:02:24 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-19 11:02:46 - network_scanner - INFO - Database initialized successfully.
+2026-07-19 11:02:46 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-19 11:03:30 - network_scanner - INFO - Database initialized successfully.
+2026-07-19 11:03:30 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-19 11:05:34 - network_scanner - INFO - Database initialized successfully.
+2026-07-19 11:05:34 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-19 11:05:34 - network_scanner - INFO - ============================================================
+2026-07-19 11:05:34 - network_scanner - INFO - PREDICTING DEVICE TYPES
+2026-07-19 11:05:34 - network_scanner - INFO - ============================================================
+2026-07-19 11:05:34 - network_scanner - INFO - Loading latest model: data/models\device_classifier_20260719_110522.pkl
+2026-07-19 11:05:34 - network_scanner - INFO - Predicting for 3 hosts...
+2026-07-19 11:05:34 - network_scanner - ERROR - Failed to predict for 192.168.1.1: X has 14 features, but StandardScaler is expecting 10 features as input.
+2026-07-19 11:05:34 - network_scanner - ERROR - Failed to predict for 192.168.1.2: X has 14 features, but StandardScaler is expecting 10 features as input.
+2026-07-19 11:05:34 - network_scanner - ERROR - Failed to predict for 192.168.1.5: X has 14 features, but StandardScaler is expecting 10 features as input.
+2026-07-19 11:05:34 - network_scanner - INFO - 
+============================================================
+2026-07-19 11:05:34 - network_scanner - INFO - PREDICTION SUMMARY
+2026-07-19 11:05:34 - network_scanner - INFO - ============================================================
+2026-07-19 11:05:34 - network_scanner - INFO - Completed predictions for 0 devices
+2026-07-19 11:06:00 - network_scanner - INFO - Database initialized successfully.
+2026-07-19 11:06:00 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-19 11:06:00 - network_scanner - INFO - ============================================================
+2026-07-19 11:06:00 - network_scanner - INFO - PREDICTING DEVICE TYPES
+2026-07-19 11:06:00 - network_scanner - INFO - ============================================================
+2026-07-19 11:06:00 - network_scanner - INFO - Loading latest model: data/models\device_classifier_20260719_110522.pkl
+2026-07-19 11:06:00 - network_scanner - INFO - Predicting for 3 hosts...
+2026-07-19 11:06:01 - network_scanner - ERROR - Failed to predict for 192.168.1.1: X has 14 features, but StandardScaler is expecting 10 features as input.
+2026-07-19 11:06:01 - network_scanner - ERROR - Failed to predict for 192.168.1.2: X has 14 features, but StandardScaler is expecting 10 features as input.
+2026-07-19 11:06:01 - network_scanner - ERROR - Failed to predict for 192.168.1.5: X has 14 features, but StandardScaler is expecting 10 features as input.
+2026-07-19 11:06:01 - network_scanner - INFO - 
+============================================================
+2026-07-19 11:06:01 - network_scanner - INFO - PREDICTION SUMMARY
+2026-07-19 11:06:01 - network_scanner - INFO - ============================================================
+2026-07-19 11:06:01 - network_scanner - INFO - Completed predictions for 0 devices
+2026-07-19 11:06:25 - network_scanner - INFO - Database initialized successfully.
+2026-07-19 11:06:25 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-19 11:06:25 - network_scanner - INFO - ============================================================
+2026-07-19 11:06:25 - network_scanner - INFO - PREDICTING DEVICE TYPES
+2026-07-19 11:06:25 - network_scanner - INFO - ============================================================
+2026-07-19 11:06:25 - network_scanner - INFO - Loading latest model: data/models\device_classifier_20260719_110522.pkl
+2026-07-19 11:06:25 - network_scanner - INFO - Predicting for 3 hosts...
+2026-07-19 11:06:25 - network_scanner - ERROR - Failed to predict for 192.168.1.1: X has 60 features, but StandardScaler is expecting 10 features as input.
+2026-07-19 11:06:25 - network_scanner - ERROR - Failed to predict for 192.168.1.2: X has 60 features, but StandardScaler is expecting 10 features as input.
+2026-07-19 11:06:25 - network_scanner - ERROR - Failed to predict for 192.168.1.5: X has 60 features, but StandardScaler is expecting 10 features as input.
+2026-07-19 11:06:25 - network_scanner - INFO - 
+============================================================
+2026-07-19 11:06:25 - network_scanner - INFO - PREDICTION SUMMARY
+2026-07-19 11:06:25 - network_scanner - INFO - ============================================================
+2026-07-19 11:06:25 - network_scanner - INFO - Completed predictions for 0 devices
+2026-07-19 11:07:11 - network_scanner - INFO - Database initialized successfully.
+2026-07-19 11:07:11 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-19 11:07:11 - network_scanner - INFO - ============================================================
+2026-07-19 11:07:11 - network_scanner - INFO - PREDICTING DEVICE TYPES
+2026-07-19 11:07:11 - network_scanner - INFO - ============================================================
+2026-07-19 11:07:11 - network_scanner - INFO - Loading latest model: data/models\device_classifier_20260719_110522.pkl
+2026-07-19 11:07:11 - network_scanner - INFO - Predicting for 3 hosts...
+2026-07-19 11:07:11 - network_scanner - ERROR - Failed to predict for 192.168.1.1: X has 18 features, but StandardScaler is expecting 10 features as input.
+2026-07-19 11:07:11 - network_scanner - ERROR - Failed to predict for 192.168.1.2: X has 18 features, but StandardScaler is expecting 10 features as input.
+2026-07-19 11:07:11 - network_scanner - ERROR - Failed to predict for 192.168.1.5: X has 18 features, but StandardScaler is expecting 10 features as input.
+2026-07-19 11:07:11 - network_scanner - INFO - 
+============================================================
+2026-07-19 11:07:11 - network_scanner - INFO - PREDICTION SUMMARY
+2026-07-19 11:07:11 - network_scanner - INFO - ============================================================
+2026-07-19 11:07:11 - network_scanner - INFO - Completed predictions for 0 devices
+2026-07-19 11:07:36 - network_scanner - INFO - Database initialized successfully.
+2026-07-19 11:07:36 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-19 11:07:36 - network_scanner - INFO - ============================================================
+2026-07-19 11:07:36 - network_scanner - INFO - PREDICTING DEVICE TYPES
+2026-07-19 11:07:36 - network_scanner - INFO - ============================================================
+2026-07-19 11:07:36 - network_scanner - INFO - Loading latest model: data/models\device_classifier_20260719_110522.pkl
+2026-07-19 11:07:36 - network_scanner - INFO - Predicting for 3 hosts...
+2026-07-19 11:07:36 - network_scanner - INFO - 192.168.1.1: Windows_PC (64.18%)
+2026-07-19 11:07:36 - network_scanner - INFO - 192.168.1.2: Windows_PC (64.18%)
+2026-07-19 11:07:36 - network_scanner - INFO - 192.168.1.5: Windows_PC (64.18%)
+2026-07-19 11:07:36 - network_scanner - INFO - 
+============================================================
+2026-07-19 11:07:36 - network_scanner - INFO - PREDICTION SUMMARY
+2026-07-19 11:07:36 - network_scanner - INFO - ============================================================
+2026-07-19 11:07:36 - network_scanner - INFO -   Windows_PC: 3
+2026-07-19 11:07:36 - network_scanner - INFO - Completed predictions for 3 devices
+2026-07-19 11:08:32 - network_scanner - INFO - Database initialized successfully.
+2026-07-19 11:08:32 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-19 11:08:32 - network_scanner - INFO - ============================================================
+2026-07-19 11:08:32 - network_scanner - INFO - PREDICTING DEVICE TYPES
+2026-07-19 11:08:32 - network_scanner - INFO - ============================================================
+2026-07-19 11:08:32 - network_scanner - INFO - Loading latest model: data/models\device_classifier_20260719_110522.pkl
+2026-07-19 11:08:32 - network_scanner - INFO - Predicting for 3 hosts...
+2026-07-19 11:08:32 - network_scanner - INFO - 192.168.1.1: Windows_PC (64.18%)
+2026-07-19 11:08:32 - network_scanner - INFO - 192.168.1.2: Windows_PC (64.18%)
+2026-07-19 11:08:32 - network_scanner - INFO - 192.168.1.5: Windows_PC (64.18%)
+2026-07-19 11:08:32 - network_scanner - INFO - 
+============================================================
+2026-07-19 11:08:32 - network_scanner - INFO - PREDICTION SUMMARY
+2026-07-19 11:08:32 - network_scanner - INFO - ============================================================
+2026-07-19 11:08:32 - network_scanner - INFO -   Windows_PC: 3
+2026-07-19 11:08:32 - network_scanner - INFO - Completed predictions for 3 devices
+2026-07-19 11:31:18 - network_scanner - INFO - Database initialized successfully.
+2026-07-19 11:31:18 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-19 11:31:18 - network_scanner - INFO - ============================================================
+2026-07-19 11:31:18 - network_scanner - INFO - PREDICTING DEVICE TYPES
+2026-07-19 11:31:18 - network_scanner - INFO - ============================================================
+2026-07-19 11:31:18 - network_scanner - INFO - Loading latest model: data/models\device_classifier_20260719_112109.pkl
+2026-07-19 11:31:18 - network_scanner - INFO - Predicting for 3 hosts...
+2026-07-19 11:31:18 - network_scanner - ERROR - Failed to predict for 192.168.1.1: X has 9 features, but StandardScaler is expecting 3 features as input.
+2026-07-19 11:31:18 - network_scanner - ERROR - Failed to predict for 192.168.1.2: X has 9 features, but StandardScaler is expecting 3 features as input.
+2026-07-19 11:31:18 - network_scanner - ERROR - Failed to predict for 192.168.1.5: X has 9 features, but StandardScaler is expecting 3 features as input.
+2026-07-19 11:31:18 - network_scanner - INFO - 
+============================================================
+2026-07-19 11:31:18 - network_scanner - INFO - PREDICTION SUMMARY
+2026-07-19 11:31:18 - network_scanner - INFO - ============================================================
+2026-07-19 11:31:18 - network_scanner - INFO - Completed predictions for 0 devices
+2026-07-19 11:31:50 - network_scanner - INFO - Database initialized successfully.
+2026-07-19 11:31:50 - network_scanner - INFO - Available tables: device_classifications, hosts, risk_scores, scan_hosts, scans, services, vulnerabilities
+2026-07-19 11:31:50 - network_scanner - INFO - ============================================================
+2026-07-19 11:31:50 - network_scanner - INFO - PREDICTING DEVICE TYPES
+2026-07-19 11:31:50 - network_scanner - INFO - ============================================================
+2026-07-19 11:31:50 - network_scanner - ERROR - No model found! Run train_model.py first.
+2026-07-19 11:31:50 - network_scanner - INFO - Completed predictions for 0 devices

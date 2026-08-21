@@ -1,0 +1,17 @@
+# Check system status
+python src/main.py status
+
+# Initialize database
+python src/main.py init-db
+
+# Run enhanced test suite
+python scripts/enhanced_scan.py
+
+# Test fingerprinting
+python scripts/test_fingerprint.py  # (we'll create this)
+
+#train the model 
+python scripts/train_model_with_features.python
+
+#to make the model predict devices : 
+python src/ml/model_trainer.py

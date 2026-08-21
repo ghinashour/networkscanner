@@ -1,0 +1,295 @@
+{% extends "base.html" %} {% block content %}
+<div class="page-header">
+  <h1>🚀 Attack Intelligence</h1>
+  <div class="header-actions">
+    <button class="btn btn-primary btn-sm" onclick="refreshData()">
+      <i class="fas fa-sync"></i> Refresh
+    </button>
+  </div>
+</div>
+
+<!-- Instructions -->
+<div
+  style="
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+  "
+>
+  <div style="display: flex; align-items: start; gap: 15px">
+    <div style="font-size: 32px">💡</div>
+    <div>
+      <h3 style="color: var(--accent); margin-bottom: 5px">How It Works</h3>
+      <p style="color: var(--text-secondary); font-size: 14px">
+        This AI system analyzes vulnerabilities and predicts potential attack
+        scenarios. It searches GitHub for real PoC exploits and generates
+        detailed exploitation steps. Select a device below to see its attack
+        surface analysis.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Device Selector -->
+<div
+  style="
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+  "
+>
+  <h3 style="margin-bottom: 10px; font-size: 16px">Select Device</h3>
+  <div style="display: flex; gap: 10px; flex-wrap: wrap">
+    <select
+      id="deviceSelect"
+      onchange="analyzeDevice()"
+      style="
+        flex: 1;
+        min-width: 200px;
+        padding: 10px;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: var(--text-primary);
+      "
+    >
+      <option value="">Select a device...</option>
+    </select>
+    <button onclick="analyzeDevice()" class="btn btn-primary">
+      <i class="fas fa-robot"></i> Analyze Attack Surface
+    </button>
+  </div>
+</div>
+
+<!-- Loading -->
+<div
+  id="loadingMessage"
+  style="
+    display: none;
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+  "
+>
+  <div style="font-size: 36px; margin-bottom: 10px">
+    <i class="fas fa-crosshairs"></i>
+  </div>
+  <div>Analyzing device for attack scenarios...</div>
+</div>
+
+<!-- Results Container -->
+<div id="resultsContainer" style="display: none"></div>
+
+<script>
+  // Load devices on page load
+  document.addEventListener("DOMContentLoaded", function () {
+    loadDevices();
+  });
+
+  function loadDevices() {
+    fetch("/api/devices")
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          const select = document.getElementById("deviceSelect");
+          data.devices.forEach((device) => {
+            const option = document.createElement("option");
+            option.value = device.id;
+            option.textContent = `${device.ip_address} (${device.device_type || "Unknown"})`;
+            select.appendChild(option);
+          });
+        }
+      })
+      .catch((error) => console.error("Error loading devices:", error));
+  }
+
+  function analyzeDevice() {
+    const deviceId = document.getElementById("deviceSelect").value;
+    if (!deviceId) {
+      alert("Please select a device");
+      return;
+    }
+
+    // Show loading
+    document.getElementById("loadingMessage").style.display = "block";
+    document.getElementById("resultsContainer").style.display = "none";
+
+    // Trigger analysis
+    fetch(`/api/attack/analyze/${deviceId}`, {
+      method: "POST",
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        document.getElementById("loadingMessage").style.display = "none";
+
+        if (data.success) {
+          displayResults(data.result);
+        } else {
+          alert("Error analyzing device: " + (data.error || "Unknown error"));
+        }
+      })
+      .catch((error) => {
+        document.getElementById("loadingMessage").style.display = "none";
+        alert("Error analyzing device");
+        console.error(error);
+      });
+  }
+
+  function displayResults(result) {
+    const container = document.getElementById("resultsContainer");
+    container.style.display = "block";
+
+    if (result.error) {
+      container.innerHTML = `
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 20px; text-align: center; color: var(--critical);">
+                    <i class="fas fa-circle-xmark"></i> Error: ${result.error}
+                </div>
+            `;
+      return;
+    }
+
+    const scenarios = result.scenarios || [];
+    const riskLevel = result.risk_level || "LOW";
+
+    let html = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 15px; text-align: center;">
+                    <div style="font-size: 24px; font-weight: bold; color: var(--accent);">${scenarios.length}</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Attack Scenarios</div>
+                </div>
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 15px; text-align: center;">
+                    <div style="font-size: 24px; font-weight: bold; color: ${riskLevel === "CRITICAL" ? "var(--critical)" : riskLevel === "HIGH" ? "var(--high)" : "var(--accent2)"};">${riskLevel}</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Risk Level</div>
+                </div>
+            </div>
+        `;
+
+    if (scenarios.length === 0) {
+      html += `
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 40px; text-align: center; color: var(--accent2);">
+                    <div style="font-size: 36px; margin-bottom: 10px;"><i class="fas fa-circle-check"></i></div>
+                    <div style="font-size: 18px;">No attack scenarios detected</div>
+                    <div style="font-size: 14px; color: var(--text-secondary); margin-top: 10px;">This device appears secure</div>
+                </div>
+            `;
+    } else {
+      scenarios.forEach((scenario, index) => {
+        const severityColor =
+          {
+            CRITICAL: "var(--critical)",
+            HIGH: "var(--high)",
+            MEDIUM: "var(--medium)",
+            LOW: "var(--accent2)",
+          }[scenario.severity] || "var(--text-secondary)";
+
+        html += `
+                    <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 20px; margin-bottom: 15px; border-left: 4px solid ${severityColor};">
+                        <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap;">
+                            <div style="flex: 1;">
+                                <div style="font-size: 18px; font-weight: bold; color: ${severityColor};">
+                                    <i class="fas fa-triangle-exclamation"></i> ${scenario.pattern} Attack
+                                </div>
+                                <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+                                    <strong>CVE:</strong> ${scenario.cve_id} | <strong>Service:</strong> ${scenario.service || "Unknown"}
+                                </div>
+                                <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+                                    <span style="background: ${severityColor}22; color: ${severityColor}; padding: 2px 10px; border-radius: 10px;">
+                                        Severity: ${scenario.severity}
+                                    </span>
+                                </div>
+                                <div style="font-size: 13px; margin-top: 8px; color: var(--text-secondary);">
+                                    ${scenario.description}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 5px; margin-top: 5px;">
+                                <button onclick="toggleSection('prereq_${index}')" class="btn btn-sm btn-primary">
+                                    Prerequisites
+                                </button>
+                                <button onclick="toggleSection('steps_${index}')" class="btn btn-sm btn-primary" style="background: var(--high);">
+                                    Exploitation Steps
+                                </button>
+                                <button onclick="toggleSection('github_${index}')" class="btn btn-sm btn-primary" style="background: var(--accent2); color: var(--bg-primary);">
+                                    GitHub Exploits
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Prerequisites -->
+                        <div id="prereq_${index}" style="display: none; margin-top: 10px; padding: 10px; background: var(--bg-primary); border-radius: 6px;">
+                            <h4 style="color: var(--accent); margin-bottom: 8px;"><i class="fas fa-clipboard-list"></i> Prerequisites</h4>
+                            <ul style="list-style: none; padding: 0;">
+                                ${(scenario.prerequisites || []).map((p) => `<li style="padding: 4px 0; color: var(--text-secondary);">• ${p}</li>`).join("")}
+                            </ul>
+                            <div style="margin-top: 8px; padding: 8px; background: #00d4ff11; border-radius: 4px; border-left: 3px solid var(--accent);">
+                                <strong style="color: var(--accent);">Mitigation:</strong>
+                                <span style="color: var(--text-secondary);">${scenario.mitigation || "Apply security patches"}</span>
+                            </div>
+                        </div>
+
+                        <!-- Exploitation Steps -->
+                        <div id="steps_${index}" style="display: none; margin-top: 10px; padding: 10px; background: var(--bg-primary); border-radius: 6px;">
+                            <h4 style="color: var(--accent); margin-bottom: 8px;">🎯 Exploitation Steps</h4>
+                            <div style="font-family: monospace; font-size: 13px;">
+                                ${(scenario.exploitation_steps || []).map((step) => `<div style="padding: 4px 0; color: var(--text-secondary);">${step}</div>`).join("")}
+                            </div>
+                        </div>
+
+                        <!-- GitHub Exploits -->
+                        <div id="github_${index}" style="display: none; margin-top: 10px; padding: 10px; background: var(--bg-primary); border-radius: 6px;">
+                            <h4 style="color: var(--accent); margin-bottom: 8px;">📦 GitHub PoC Exploits</h4>
+                            ${
+                              scenario.github_exploits &&
+                              scenario.github_exploits.length > 0
+                                ? scenario.github_exploits
+                                    .map(
+                                      (exp) => `
+                                    <div style="padding: 8px; background: var(--bg-secondary); border-radius: 4px; margin-bottom: 5px; border-left: 3px solid var(--accent2);">
+                                        <div style="font-weight: bold; color: var(--accent);">${exp.name || "Unknown"}</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">
+                                            <a href="${exp.github_url}" target="_blank" style="color: var(--accent);">View on GitHub</a>
+                                            | ⭐ ${exp.stars || 0} stars | 📝 ${exp.language || "Unknown"}
+                                        </div>
+                                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">${exp.description || ""}</div>
+                                    </div>
+                                `,
+                                    )
+                                    .join("")
+                                : '<div style="color: var(--text-secondary);">No public PoC exploits found on GitHub</div>'
+                            }
+                        </div>
+                    </div>
+                `;
+      });
+    }
+
+    container.innerHTML = html;
+  }
+
+  function toggleSection(id) {
+    const element = document.getElementById(id);
+    if (element.style.display === "none" || element.style.display === "") {
+      element.style.display = "block";
+    } else {
+      element.style.display = "none";
+    }
+  }
+
+  function refreshData() {
+    const deviceId = document.getElementById("deviceSelect").value;
+    if (deviceId) {
+      analyzeDevice();
+    }
+  }
+</script>
+
+<style>
+  .btn-sm {
+    padding: 4px 12px;
+    font-size: 11px;
+  }
+</style>
+{% endblock %}

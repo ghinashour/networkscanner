@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.git/
+.history/
+.history/
+.pytest_cache/
+.mypy_cache/
+logs/*
+*.db-journal
+node_modules/
+.vscode/

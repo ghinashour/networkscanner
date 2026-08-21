@@ -1,0 +1,501 @@
+{% extends "base.html" %} {% block content %}
+<style>
+  .soc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    padding: 20px 22px;
+    margin-bottom: 18px;
+    background: linear-gradient(110deg, #102f40, #091824 70%);
+    border: 1px solid #2a7182;
+    border-radius: 8px;
+    box-shadow:
+      0 0 34px #20d7f522,
+      inset 0 1px #fff1;
+  }
+  .soc-header h1 {
+    margin: 0 0 6px;
+  }
+  .soc-header h1 i {
+    color: var(--accent2);
+  }
+  .soc-header p {
+    color: var(--text-secondary);
+    font-size: 13px;
+    max-width: 720px;
+    line-height: 1.5;
+  }
+  .soc-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .soc-actions button {
+    white-space: nowrap;
+  }
+  .soc-grid {
+    display: grid;
+    grid-template-columns: 1.35fr 0.8fr;
+    gap: 16px;
+  }
+  .soc-panel {
+    background: linear-gradient(145deg, #0e2030e8, #091522e8);
+    border: 1px solid #1e4966;
+    border-radius: 8px;
+    padding: 18px;
+    box-shadow:
+      0 12px 28px #0003,
+      inset 0 1px #fff1;
+  }
+  .soc-panel h2 {
+    font-size: 16px;
+    margin-bottom: 13px;
+  }
+  .soc-panel h2 i {
+    color: var(--accent);
+  }
+  .brief {
+    min-height: 168px;
+    color: #c5d8df;
+    font-size: 13px;
+    line-height: 1.65;
+  }
+  .brief strong {
+    color: var(--accent2);
+  }
+  .signal-list {
+    display: grid;
+    gap: 9px;
+  }
+  .signal {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px;
+    background: #071522b8;
+    border: 1px solid #214963;
+    border-radius: 5px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .signal i {
+    color: var(--high);
+    margin-top: 2px;
+  }
+  .signal.critical i {
+    color: var(--critical);
+  }
+  .signal.ok i {
+    color: var(--accent2);
+  }
+  .soc-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .soc-kpi {
+    padding: 14px;
+    background: linear-gradient(145deg, #102638, #0a1724);
+    border: 1px solid #245370;
+    border-radius: 7px;
+    box-shadow: 0 0 18px #20d7f514;
+  }
+  .soc-kpi b {
+    display: block;
+    font-size: 24px;
+    color: var(--accent);
+  }
+  .soc-kpi span {
+    color: var(--text-secondary);
+    font-size: 11px;
+  }
+  .priority-list {
+    display: grid;
+    gap: 8px;
+    max-height: 400px;
+    overflow: auto;
+  }
+  .priority {
+    display: grid;
+    grid-template-columns: 34px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 11px;
+    border: 1px solid #28516a;
+    border-radius: 5px;
+    background: #071522;
+  }
+  .priority:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 16px #20d7f522;
+  }
+  .priority-icon {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #3b1420;
+    color: var(--critical);
+  }
+  .priority.high .priority-icon {
+    background: #3d2a16;
+    color: var(--high);
+  }
+  .priority.medium .priority-icon {
+    background: #3e3517;
+    color: var(--medium);
+  }
+  .priority-title {
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .priority-meta {
+    color: var(--text-secondary);
+    font-size: 11px;
+    margin-top: 3px;
+  }
+  .priority-score {
+    color: var(--accent2);
+    font: 12px monospace;
+  }
+  .query-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 13px;
+  }
+  .query-row input {
+    flex: 1;
+    padding: 10px 12px;
+  }
+  .query-row button {
+    white-space: nowrap;
+  }
+  .query-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-bottom: 14px;
+  }
+  .query-chip {
+    cursor: pointer;
+    border: 1px solid #2c6278;
+    background: #0b2636;
+    color: #a8c9d3;
+    border-radius: 999px;
+    padding: 6px 9px;
+    font-size: 11px;
+  }
+  .query-chip:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .watch-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .watch-table th,
+  .watch-table td {
+    padding: 9px 7px;
+    border-bottom: 1px solid #214157;
+    text-align: left;
+  }
+  .watch-table th {
+    color: var(--text-secondary);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .watch-table td:last-child {
+    text-align: right;
+  }
+  .empty-soc {
+    color: var(--text-secondary);
+    font-size: 12px;
+    padding: 18px 0;
+    text-align: center;
+  }
+  .soc-footnote {
+    color: #73909d;
+    font-size: 10px;
+    margin-top: 14px;
+  }
+  @media (max-width: 950px) {
+    .soc-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 650px) {
+    .soc-header {
+      display: block;
+    }
+    .soc-actions {
+      margin-top: 14px;
+    }
+    .soc-kpis {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+</style>
+
+<section class="soc-header">
+  <div>
+    <h1><i class="fas fa-brain"></i> AI Security Operations Center</h1>
+    <p>
+      Live triage workspace that correlates device risk, vulnerabilities,
+      anomaly signals, recommendations, and campus context. This page is
+      distinct from reports and recommendations: it helps an operator decide
+      what to investigate next.
+    </p>
+  </div>
+  <div class="soc-actions">
+    <button class="btn btn-primary btn-sm" onclick="loadSoc()">
+      <i class="fas fa-rotate"></i> Refresh Intel</button
+    >{% if user_role in ['administrator','manager'] %}<button
+      class="btn btn-success btn-sm"
+      onclick="trainSocAnomalies()"
+    >
+      <i class="fas fa-wand-magic-sparkles"></i> Re-score Anomalies</button
+    >{% endif %}
+  </div>
+</section>
+
+<div class="soc-kpis">
+  <div class="soc-kpi">
+    <b id="socDevices">-</b><span>Monitored devices</span>
+  </div>
+  <div class="soc-kpi">
+    <b id="socCritical">-</b><span>Critical findings</span>
+  </div>
+  <div class="soc-kpi">
+    <b id="socAnomalies">-</b><span>Anomaly signals</span>
+  </div>
+  <div class="soc-kpi">
+    <b id="socOpenRecs">-</b><span>Open recommendations</span>
+  </div>
+</div>
+
+<div class="soc-grid">
+  <section class="soc-panel">
+    <h2><i class="fas fa-comment-dots"></i> Analyst Briefing</h2>
+    <div class="brief" id="socBrief">
+      <div class="empty-soc">Correlating live security telemetry...</div>
+    </div>
+    <div class="soc-footnote">
+      <i class="fas fa-circle-info"></i> Transparent synthesis from current
+      project data; validate decisions against technical evidence.
+    </div>
+  </section>
+  <section class="soc-panel">
+    <h2><i class="fas fa-radar"></i> Signal Watch</h2>
+    <div class="signal-list" id="signalList">
+      <div class="empty-soc">Waiting for signals...</div>
+    </div>
+  </section>
+</div>
+
+<div class="soc-grid" style="margin-top: 16px">
+  <section class="soc-panel">
+    <h2><i class="fas fa-bolt"></i> Priority Queue</h2>
+    <div class="priority-list" id="priorityList">
+      <div class="empty-soc">Building priority queue...</div>
+    </div>
+  </section>
+  <section class="soc-panel">
+    <h2><i class="fas fa-magnifying-glass-chart"></i> AI Investigation</h2>
+    <div class="query-row">
+      <input
+        id="socQuery"
+        placeholder="Ask about the current network..."
+        onkeydown="if (event.key === 'Enter') runSocQuery();"
+      /><button class="btn btn-primary btn-sm" onclick="runSocQuery()">
+        <i class="fas fa-arrow-right"></i>
+      </button>
+    </div>
+    <div class="query-chips">
+      <button class="query-chip" onclick="useSocQuery('Show critical devices')">
+        Critical devices</button
+      ><button
+        class="query-chip"
+        onclick="useSocQuery('Show anomalous signals')"
+      >
+        Anomalies</button
+      ><button class="query-chip" onclick="useSocQuery('Show exposed routers')">
+        Exposed routers</button
+      ><button class="query-chip" onclick="useSocQuery('What changed?')">
+        What changed?
+      </button>
+    </div>
+    <div class="brief" id="queryResult">
+      <div class="empty-soc">Ask a focused question or choose a shortcut.</div>
+    </div>
+  </section>
+</div>
+
+<section class="soc-panel" style="margin-top: 16px">
+  <h2><i class="fas fa-eye"></i> Watchlist Devices</h2>
+  <table class="watch-table">
+    <thead>
+      <tr>
+        <th>Device</th>
+        <th>Type</th>
+        <th>Risk</th>
+        <th>Last seen</th>
+        <th>Score</th>
+      </tr>
+    </thead>
+    <tbody id="watchBody">
+      <tr>
+        <td colspan="5" class="empty-soc">Loading watchlist...</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<script>
+  let socState = { stats: {}, devices: [], anomalies: [], recommendations: [] };
+  const socEsc = (value) =>
+    String(value ?? "").replace(
+      /[&<>'"]/g,
+      (c) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "'": "&#39;",
+          '"': "&quot;",
+        })[c],
+    );
+  function socFetch(url) {
+    return fetch(url).then((r) => r.json());
+  }
+  function loadSoc() {
+    Promise.all([
+      socFetch("/api/statistics/overview"),
+      socFetch("/api/devices"),
+      socFetch("/api/anomalies"),
+      socFetch("/api/recommendations/all"),
+    ])
+      .then(([stats, devices, anomalies, recs]) => {
+        socState.stats = stats.statistics || {};
+        socState.devices = devices.devices || [];
+        socState.anomalies = anomalies.anomalies || [];
+        socState.recommendations = recs.recommendations || [];
+        renderSoc();
+      })
+      .catch((error) => {
+        document.getElementById("socBrief").innerHTML =
+          `<span style="color:var(--critical)"><i class="fas fa-circle-xmark"></i> Intelligence feed unavailable: ${socEsc(error.message)}</span>`;
+      });
+  }
+  function renderSoc() {
+    const s = socState.stats,
+      devices = socState.devices;
+    const critical = s.critical_vulnerabilities || 0;
+    const total = s.total_vulnerabilities || 0;
+    const anomalies = socState.anomalies;
+    const open = socState.recommendations.filter(
+      (r) => !["done", "dismissed"].includes(r.status),
+    ).length;
+    document.getElementById("socDevices").textContent =
+      s.total_devices || devices.length;
+    document.getElementById("socCritical").textContent = critical;
+    document.getElementById("socAnomalies").textContent = anomalies.length;
+    document.getElementById("socOpenRecs").textContent = open;
+    const avg = s.average_risk_score || 0;
+    const lead = critical
+      ? `The network is in a <strong>high-priority state</strong>: ${critical} critical findings across ${s.total_devices || devices.length} monitored devices.`
+      : `The current network has no critical blocker in the overview feed and is ready for routine validation.`;
+    const next = total
+      ? `The next best action is to triage the highest-risk assets, then schedule remediation for the ${total} open vulnerability records.`
+      : `Maintain scheduled scans and anomaly training to preserve visibility.`;
+    document.getElementById("socBrief").innerHTML =
+      `${lead}<br><br>${next}<br><br><strong>Operator focus:</strong> risk score average ${avg.toFixed(1)}/10, ${open} open recommendation${open === 1 ? "" : "s"}, and ${anomalies.length} anomaly signal${anomalies.length === 1 ? "" : "s"} currently available.`;
+    const signals = [];
+    if (critical)
+      signals.push(
+        `<div class="signal critical"><i class="fas fa-triangle-exclamation"></i><span><strong>${critical} critical findings</strong><br>Prioritize containment and patch validation.</span></div>`,
+      );
+    if (anomalies.length)
+      signals.push(
+        `<div class="signal"><i class="fas fa-wave-square"></i><span><strong>${anomalies.length} anomaly signals</strong><br>Review unusual device behavior.</span></div>`,
+      );
+    if (!signals.length)
+      signals.push(
+        `<div class="signal ok"><i class="fas fa-circle-check"></i><span><strong>Baseline stable</strong><br>No immediate signal requires escalation.</span></div>`,
+      );
+    document.getElementById("signalList").innerHTML = signals.join("");
+    const queue = [...devices]
+      .sort((a, b) => (b.risk_score || 0) - (a.risk_score || 0))
+      .slice(0, 8);
+    document.getElementById("priorityList").innerHTML = queue.length
+      ? queue
+          .map((d) => {
+            const level = (d.risk_level || "MEDIUM").toLowerCase();
+            return `<div class="priority ${level}"><div class="priority-icon"><i class="fas fa-${level === "critical" ? "triangle-exclamation" : level === "high" ? "bolt" : "circle-info"}"></i></div><div><div class="priority-title">${socEsc(d.hostname || d.ip_address)}</div><div class="priority-meta">${socEsc(d.ip_address)} · ${socEsc(d.device_type || "Unknown")} · ${socEsc(d.total_cves || 0)} CVEs</div></div><div class="priority-score">${Number(d.risk_score || 0).toFixed(1)}</div></div>`;
+          })
+          .join("")
+      : '<div class="empty-soc">No prioritized devices found.</div>';
+    document.getElementById("watchBody").innerHTML = queue.length
+      ? queue
+          .slice(0, 5)
+          .map(
+            (d) =>
+              `<tr><td>${socEsc(d.hostname || d.ip_address)}</td><td>${socEsc(d.device_type || "Unknown")}</td><td>${socEsc(d.risk_level || "NONE")}</td><td>${socEsc(d.last_seen || "Unknown")}</td><td style="color:var(--accent2)">${Number(d.risk_score || 0).toFixed(1)}</td></tr>`,
+          )
+          .join("")
+      : '<tr><td colspan="5" class="empty-soc">No watchlist data.</td></tr>';
+  }
+  function useSocQuery(query) {
+    document.getElementById("socQuery").value = query;
+    runSocQuery();
+  }
+  function runSocQuery() {
+    const query = document
+      .getElementById("socQuery")
+      .value.trim()
+      .toLowerCase();
+    const devices = socState.devices;
+    let result = "";
+    if (!query) return;
+    if (query.includes("critical")) {
+      const rows = devices
+        .filter((d) => ["CRITICAL", "HIGH"].includes(d.risk_level))
+        .slice(0, 8);
+      result = rows.length
+        ? `<strong>${rows.length} priority assets:</strong><br>${rows.map((d) => `${socEsc(d.hostname || d.ip_address)} · ${socEsc(d.risk_level)} · score ${Number(d.risk_score || 0).toFixed(1)}`).join("<br>")}`
+        : "No critical or high-risk assets in the current feed.";
+    } else if (query.includes("anomal")) {
+      result = socState.anomalies.length
+        ? `<strong>${socState.anomalies.length} anomaly records available.</strong><br>Review the Anomaly Detection and Devices pages for detailed evidence.`
+        : "No anomaly records are currently available.";
+    } else if (query.includes("router")) {
+      const rows = devices.filter((d) =>
+        (d.device_type || "").toLowerCase().includes("router"),
+      );
+      result = `<strong>${rows.length} routers detected.</strong><br>${rows
+        .slice(0, 6)
+        .map(
+          (d) =>
+            `${socEsc(d.ip_address)} · ${socEsc(d.hostname || "unnamed")} · ${socEsc(d.risk_level || "unrated")}`,
+        )
+        .join("<br>")}`;
+    } else {
+      result = `<strong>Investigation context:</strong><br>${socState.stats.total_devices || devices.length} devices, ${socState.stats.total_vulnerabilities || 0} vulnerabilities, ${socState.anomalies.length} anomaly signals. Use a shortcut for a focused triage view.`;
+    }
+    document.getElementById("queryResult").innerHTML = result;
+  }
+  function trainSocAnomalies() {
+    fetch("/api/anomalies/train", { method: "POST" })
+      .then((r) => r.json())
+      .then((data) => {
+        alert(data.message || data.error || "Anomaly model updated");
+        loadSoc();
+      });
+  }
+  document.addEventListener("DOMContentLoaded", loadSoc);
+</script>
+{% endblock %}
