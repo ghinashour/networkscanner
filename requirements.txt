@@ -36,3 +36,6 @@ flask-mail==0.9.1
 
 # Production server
 gunicorn==23.0.0
+
+
+Cython>=3.0
