@@ -5,13 +5,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# ADDED "nmap" to the installation list below 👇
 RUN apt-get update && apt-get install -y \
     build-essential \
     nmap \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /app/data   # <-- create database directory
+RUN mkdir -p /app/data
 
 COPY requirements.txt .
 RUN pip install --upgrade pip \
@@ -19,5 +18,5 @@ RUN pip install --upgrade pip \
 
 COPY . .
 
-# Use $PORT, and ensure your app object is correctly named
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:"8000, "app:app"]
+# ✅ FIXED: Using shell form so $PORT expands correctly
+CMD gunicorn -w 4 -b 0.0.0.0:$PORT app:app
