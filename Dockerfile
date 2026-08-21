@@ -20,4 +20,4 @@ RUN pip install --upgrade pip \
 COPY . .
 
 # Use $PORT, and ensure your app object is correctly named
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:$PORT", "app:app"]
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:"8000, "app:app"]
