@@ -26,7 +26,6 @@ black==23.11.0
 flake8==6.1.0
 
 # ML (for future weeks)
-Cython>=3.0
 scikit-learn==1.3.2
 pandas==2.1.3
 numpy==1.26.2
