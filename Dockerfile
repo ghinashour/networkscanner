@@ -5,10 +5,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install system dependencies for Cython and scikit-learn
+# ADDED "nmap" to the installation list below 👇
 RUN apt-get update && apt-get install -y \
     build-essential \
+    nmap \
     && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /app/data   # <-- create database directory
 
 COPY requirements.txt .
 RUN pip install --upgrade pip \
@@ -16,4 +19,5 @@ RUN pip install --upgrade pip \
 
 COPY . .
 
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8000", "app:app"]
+# Use $PORT, and ensure your app object is correctly named
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:$PORT", "app:app"]
