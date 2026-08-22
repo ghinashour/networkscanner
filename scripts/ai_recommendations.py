@@ -186,149 +186,302 @@ class AIRecommendations:
             logger.error(f"Error getting vulnerabilities for device {device_id}: {e}")
             return []
     
+    def _safe_int(self, value, default=0):
+        """Convert value to int, return default if None or non-convertible"""
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return default
+    
+    def _safe_float(self, value, default=0.0):
+        """Convert value to float, return default if None or non-convertible"""
+        if value is None:
+            return default
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return default
+    
     def _generate_device_recommendations(self, device: Dict, vulns: List[Dict]) -> List[Dict]:
-        """Generate recommendations for a single device"""
+        """Generate real-world, actionable recommendations for a single device"""
         recommendations = []
         
-        # Get device attributes
-        device_type = device.get('device_type', 'Unknown')
+        # Safely extract numeric values
+        risk_score = self._safe_float(device.get('risk_score'), 0.0)
+        total_cves = self._safe_int(device.get('total_cves'), 0)
+        critical_cves = self._safe_int(device.get('critical_cves'), 0)
+        high_cves = self._safe_int(device.get('high_cves'), 0)
         risk_level = device.get('risk_level', 'NONE')
-        risk_score = device.get('risk_score', 0)
-        total_cves = device.get('total_cves', 0)
-        critical_cves = device.get('critical_cves', 0)
-        high_cves = device.get('high_cves', 0)
+        device_type = device.get('device_type', 'Unknown')
+        os_name = device.get('os', '').lower()
+        ip = device.get('ip_address', '')
+        hostname = device.get('hostname', '')
         
-        # ===== CRITICAL RECOMMENDATIONS =====
+        # Parse open ports and services
+        open_ports = []
+        services_list = []
+        try:
+            ports_json = device.get('open_ports', '[]')
+            if ports_json:
+                open_ports = json.loads(ports_json) if isinstance(ports_json, str) else ports_json
+            services_json = device.get('services', '[]')
+            if services_json:
+                services_list = json.loads(services_json) if isinstance(services_json, str) else services_json
+        except:
+            pass
         
-        # 1. Critical vulnerabilities
+        # Ensure we have lists
+        open_ports = list(set(open_ports))  # unique
+        service_names = [s.get('service', '').lower() for s in services_list if isinstance(s, dict)]
+        
+        # ====================================================================
+        # CRITICAL RECOMMENDATIONS
+        # ====================================================================
+        
+        # 1. Critical CVEs
         if critical_cves > 0:
+            cve_ids = [v['cve_id'] for v in vulns if v.get('severity') == 'CRITICAL'][:5]
+            cve_str = ', '.join(cve_ids[:3])
             recommendations.append({
                 'priority': 'critical',
-                'title': f'🔴 {critical_cves} Critical Vulnerabilities Detected',
-                'description': f'Device {device["ip_address"]} has {critical_cves} critical vulnerabilities that require immediate attention.',
-                'action': 'Patch or isolate this device immediately. Apply security updates and restart services.',
+                'title': f'🔴 {critical_cves} Critical Vulnerabilities on {hostname or ip}',
+                'description': f'Device has {critical_cves} critical CVEs (e.g., {cve_str}). These require immediate patching or isolation.',
+                'action': f'Apply vendor patches for {cve_str}. If no patch is available, consider network isolation or additional security controls.',
                 'type': 'vulnerability'
             })
         
-        # 2. High risk score
-        if risk_score >= 8.0:
+        # 2. Very high risk score
+        if risk_score >= 9.0:
             recommendations.append({
                 'priority': 'critical',
-                'title': '🚨 Critical Risk Level Detected',
-                'description': f'Device has a risk score of {risk_score}/10, indicating severe security risk.',
-                'action': 'Perform immediate security assessment. Consider network isolation until remediation.',
+                'title': f'🚨 Extremely High Risk (Score {risk_score:.1f}/10)',
+                'description': f'Device {hostname or ip} has a risk score of {risk_score:.1f} - this is in the highest risk band.',
+                'action': 'Immediate incident response: isolate device, conduct forensic analysis, and implement emergency patching.',
                 'type': 'risk'
             })
         
-        # ===== HIGH RECOMMENDATIONS =====
+        # 3. Specific dangerous services exposed
+        dangerous_services = {
+            'smb': 'SMB (port 445) is often targeted by ransomware (e.g., EternalBlue).',
+            'rdp': 'RDP (port 3389) is a common attack vector for brute-force and credential theft.',
+            'telnet': 'Telnet transmits credentials in plaintext; extremely insecure.',
+            'ftp': 'FTP is unencrypted; use SFTP or FTPS instead.',
+            'snmp': 'SNMP can leak device information and is often misconfigured with default credentials.',
+            'nfs': 'NFS may expose sensitive file shares without proper authentication.'
+        }
+        for service_name in dangerous_services:
+            if service_name in service_names or any(p == port for port in open_ports if port in [445, 3389, 23, 21, 161, 2049]):
+                if service_name == 'smb' and 445 in open_ports:
+                    recommendations.append({
+                        'priority': 'critical',
+                        'title': f'⚠️ SMB Service Exposed (Port 445)',
+                        'description': f'SMB is exposed on {hostname or ip}. This service is frequently used in ransomware attacks.',
+                        'action': 'Disable SMBv1, apply MS17-010 patch, restrict SMB access to trusted subnets, and enforce SMB signing.',
+                        'type': 'hardening'
+                    })
+                elif service_name == 'rdp' and 3389 in open_ports:
+                    recommendations.append({
+                        'priority': 'critical',
+                        'title': f'🔑 RDP Service Exposed (Port 3389)',
+                        'description': f'RDP is open on {hostname or ip}. RDP attacks (brute-force, BlueKeep) are common.',
+                        'action': 'Use a VPN/RDG gateway, enable Network Level Authentication (NLA), enforce strong passwords, and enable account lockout.',
+                        'type': 'hardening'
+                    })
+                elif service_name == 'telnet':
+                    recommendations.append({
+                        'priority': 'critical',
+                        'title': f'🚫 Telnet Enabled (Insecure)',
+                        'description': 'Telnet transmits credentials in plaintext and is vulnerable to interception.',
+                        'action': 'Immediately disable Telnet and replace with SSH. Use SSH with key-based authentication.',
+                        'type': 'hardening'
+                    })
+                break  # only one critical service recommendation
         
-        # 3. High vulnerabilities
+        # ====================================================================
+        # HIGH RECOMMENDATIONS
+        # ====================================================================
+        
+        # 4. High CVEs
         if high_cves > 0:
-            recommendations.append({
+            high_cve_ids = [v['cve_id'] for v in vulns if v.get('severity') == 'HIGH'][:3]
+            rec = {
                 'priority': 'high',
-                'title': f'🟠 {high_cves} High Vulnerabilities Detected',
-                'description': f'Device has {high_cves} high-severity vulnerabilities that need attention.',
-                'action': 'Schedule patching within the next maintenance window. Review security configuration.',
+                'title': f'🟠 {high_cves} High-Severity Vulnerabilities',
+                'description': f'Device has {high_cves} high CVEs (e.g., {", ".join(high_cve_ids)}). These should be patched soon.',
+                'action': f'Apply patches for {", ".join(high_cve_ids)}. Test in staging before production.',
                 'type': 'vulnerability'
-            })
+            }
+            recommendations.append(rec)
         
-        # 4. Old OS version
-        os_name = device.get('os', '').lower()
-        if any(term in os_name for term in ['windows 7', 'windows 8', 'ubuntu 16', 'centos 6', 'debian 8']):
+        # 5. Outdated OS / EOL
+        eol_indicators = ['windows 7', 'windows 8', 'ubuntu 16', 'centos 6', 'debian 8', 'rhel 6']
+        if any(indicator in os_name for indicator in eol_indicators):
             recommendations.append({
                 'priority': 'high',
-                'title': '⚠️ Outdated Operating System',
-                'description': f'Device running {device["os"]}, which is end-of-life or outdated.',
-                'action': 'Plan upgrade to a supported OS version. Consider migration plan.',
+                'title': '🔄 End-of-Life Operating System Detected',
+                'description': f'{hostname or ip} is running {device["os"]}, which is no longer supported with security updates.',
+                'action': f'Plan migration to a supported OS (e.g., Windows Server 2022, Ubuntu 22.04, RHEL 9). Schedule within 60 days.',
                 'type': 'os'
             })
         
-        # 5. Device type specific recommendations
-        if device_type == 'Server' and total_cves > 5:
+        # 6. Server with many vulnerabilities
+        if device_type == 'Server' and total_cves > 8:
             recommendations.append({
                 'priority': 'high',
-                'title': '🖥️ Server Requires Security Hardening',
-                'description': f'Server device has {total_cves} vulnerabilities that could be exploited.',
-                'action': 'Implement server hardening guidelines. Review firewall rules and access controls.',
+                'title': '🖥️ Server Security Hardening Needed',
+                'description': f'Server {hostname or ip} has {total_cves} vulnerabilities. Servers are prime targets.',
+                'action': 'Implement server hardening benchmarks (CIS, DISA STIG). Review firewall rules, disable unused services, and enforce least privilege.',
                 'type': 'hardening'
             })
         
-        # ===== MEDIUM RECOMMENDATIONS =====
-        
-        # 6. Moderate vulnerabilities
-        if total_cves > 0 and critical_cves == 0 and high_cves == 0:
+        # 7. Excessive open ports (high attack surface)
+        if len(open_ports) > 15:
             recommendations.append({
-                'priority': 'medium',
-                'title': f'📋 {total_cves} Medium/Low Vulnerabilities Found',
-                'description': 'Device has manageable vulnerabilities that should be addressed.',
-                'action': 'Apply available security patches. Review security best practices.',
-                'type': 'vulnerability'
-            })
-        
-        # 7. IoT device recommendations
-        if device_type == 'IoT':
-            recommendations.append({
-                'priority': 'medium',
-                'title': '📡 IoT Device Security Check',
-                'description': 'IoT devices often have limited security features and update capabilities.',
-                'action': 'Check for firmware updates. Review network segmentation. Disable unnecessary services.',
-                'type': 'iot'
-            })
-        
-        # 8. Multiple open ports
-        open_ports = json.loads(device.get('open_ports', '[]')) if device.get('open_ports') else []
-        if len(open_ports) > 10:
-            recommendations.append({
-                'priority': 'medium',
-                'title': '🔌 Excessive Open Ports',
-                'description': f'Device has {len(open_ports)} open ports, increasing attack surface.',
-                'action': 'Review and close unnecessary ports. Implement firewall rules to restrict access.',
+                'priority': 'high',
+                'title': '🔌 Excessive Open Ports (Attack Surface)',
+                'description': f'Device has {len(open_ports)} open ports, increasing potential entry points.',
+                'action': f'Review and close unnecessary ports. Use firewall to restrict access to only required services. Current open ports: {", ".join(map(str, open_ports[:10]))}...',
                 'type': 'network'
             })
         
-        # ===== LOW RECOMMENDATIONS =====
-        
-        # 9. Missing hostname (best practice)
-        if not device.get('hostname') or device.get('hostname') == '':
+        # 8. Weak or no hostname (asset management issue)
+        if not hostname or hostname == '':
             recommendations.append({
-                'priority': 'low',
-                'title': '🏷️ Missing Device Hostname',
-                'description': 'Device lacks a proper hostname for identification.',
-                'action': 'Assign a descriptive hostname to improve asset management.',
+                'priority': 'high',
+                'title': '🏷️ Missing Hostname',
+                'description': f'Device {ip} lacks a proper hostname, making management and incident response difficult.',
+                'action': 'Assign a descriptive hostname (e.g., SRV-DB01, USR-LAPTOP-01) in DNS and local host file.',
                 'type': 'best_practice'
             })
         
-        # 10. Regular scanning recommendation
+        # ====================================================================
+        # MEDIUM RECOMMENDATIONS
+        # ====================================================================
+        
+        # 9. Medium/low vulnerabilities (if no critical/high)
+        if total_cves > 0 and critical_cves == 0 and high_cves == 0:
+            rec = {
+                'priority': 'medium',
+                'title': f'📋 {total_cves} Medium/Low Vulnerabilities',
+                'description': 'Device has manageable vulnerabilities that should be addressed in routine maintenance.',
+                'action': 'Apply available security patches. Review risk acceptance policy for low severity issues.',
+                'type': 'vulnerability'
+            }
+            recommendations.append(rec)
+        
+        # 10. IoT device
+        if device_type == 'IoT':
+            recommendations.append({
+                'priority': 'medium',
+                'title': '📡 IoT Device Security Review',
+                'description': f'IoT device {hostname or ip} may have limited security capabilities and firmware update challenges.',
+                'action': 'Check for firmware updates. Isolate IoT devices in a separate VLAN. Disable UPnP, Telnet, and default credentials.',
+                'type': 'iot'
+            })
+        
+        # 11. Open SSH with weak configuration
+        if 22 in open_ports and 'ssh' in service_names:
+            recommendations.append({
+                'priority': 'medium',
+                'title': '🔑 SSH Server Configuration',
+                'description': f'SSH is open on {hostname or ip}. Ensure secure configuration.',
+                'action': 'Disable root login, enforce key-based authentication, change default port (optional), and set LoginGraceTime to 30s.',
+                'type': 'hardening'
+            })
+        
+        # 12. Web services (HTTP/HTTPS) open
+        web_ports = [80, 443, 8080, 8443]
+        if any(p in open_ports for p in web_ports):
+            recommendations.append({
+                'priority': 'medium',
+                'title': '🌐 Web Service Exposure',
+                'description': f'Web services are running on {hostname or ip}. Ensure they are up-to-date and secure.',
+                'action': 'Apply web server patches, enable HTTPS with strong TLS, configure security headers (HSTS, CSP), and use WAF if applicable.',
+                'type': 'network'
+            })
+        
+        # 13. No recent scan (stale data)
+        last_seen = device.get('last_seen')
+        if last_seen:
+            try:
+                last_seen_dt = datetime.fromisoformat(last_seen.replace('Z', '+00:00'))
+                if (datetime.now() - last_seen_dt).days > 30:
+                    recommendations.append({
+                        'priority': 'medium',
+                        'title': '🕒 Device Not Scanned Recently',
+                        'description': f'Last scan for {hostname or ip} was more than 30 days ago.',
+                        'action': 'Schedule a new network scan to refresh vulnerability data and device inventory.',
+                        'type': 'monitoring'
+                    })
+            except:
+                pass
+        
+        # ====================================================================
+        # LOW RECOMMENDATIONS (Best Practices)
+        # ====================================================================
+        
+        # 14. Best practice: regular scanning
         if total_cves == 0:
             recommendations.append({
                 'priority': 'low',
                 'title': '✅ Device Appears Secure - Continue Monitoring',
-                'description': 'No vulnerabilities found on this device.',
-                'action': 'Maintain regular scanning schedule. Review security policies quarterly.',
+                'description': f'No vulnerabilities found on {hostname or ip}. Keep monitoring.',
+                'action': 'Maintain regular scanning schedule (e.g., weekly). Review security policies quarterly.',
                 'type': 'monitoring'
             })
         
-        # 11. Windows-specific recommendations
+        # 15. Windows Workstation specific
         if 'windows' in os_name and device_type != 'Server':
             recommendations.append({
                 'priority': 'low',
-                'title': '💻 Windows Workstation Security',
-                'description': 'Ensure Windows workstations are properly configured.',
-                'action': 'Verify Windows Update settings. Check antivirus status. Review user permissions.',
+                'title': '💻 Windows Workstation Best Practices',
+                'description': f'Ensure Windows workstation {hostname or ip} is properly configured.',
+                'action': 'Verify Windows Update settings, enable Windows Defender, enable BitLocker, and enforce LAPS for local admin passwords.',
                 'type': 'best_practice'
             })
         
-        # 12. Router/Switch recommendations
+        # 16. Router/Switch
         if device_type == 'Router':
             recommendations.append({
                 'priority': 'low',
                 'title': '🌐 Network Device Security',
-                'description': 'Network infrastructure devices require special attention.',
-                'action': 'Review router security settings. Disable remote management if not needed.',
+                'description': f'Router {hostname or ip} should have secure management and up-to-date firmware.',
+                'action': 'Disable telnet, enable SSH, enforce ACLs, update firmware, and use SNMPv3 with strong community strings.',
                 'type': 'network'
             })
         
-        return recommendations
+        # 17. Printer / Multi-function device
+        if 'printer' in device_type.lower():
+            recommendations.append({
+                'priority': 'low',
+                'title': '🖨️ Printer Security',
+                'description': 'Printers can be entry points. Ensure secure configuration.',
+                'action': 'Disable unnecessary protocols (FTP, Telnet). Enable secure printing (IPSec). Keep firmware updated.',
+                'type': 'hardening'
+            })
+        
+        # 18. No firewall recommendation if not detected
+        # (We can't detect firewall, but we can recommend enabling it)
+        recommendations.append({
+            'priority': 'low',
+            'title': '🛡️ Enable Host Firewall',
+            'description': f'Ensure host-based firewall is enabled on {hostname or ip} to limit inbound traffic.',
+            'action': 'Enable Windows Firewall or iptables/nftables. Configure default deny inbound, allow outbound.',
+            'type': 'best_practice'
+        })
+        
+        # Remove duplicates based on title (keep first occurrence)
+        seen_titles = set()
+        unique_recs = []
+        for rec in recommendations:
+            if rec['title'] not in seen_titles:
+                seen_titles.add(rec['title'])
+                unique_recs.append(rec)
+        
+        # Limit to max 8 recommendations per device to avoid spam
+        return unique_recs[:8]
     
     def _save_recommendation(self, device_id: int, rec: Dict):
         """Save recommendation to database"""

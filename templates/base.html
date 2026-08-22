@@ -149,6 +149,12 @@
         min-height: 100vh;
         position: relative;
         z-index: 1;
+        transition: margin-left 0.3s;
+      }
+
+      /* When sidebar is hidden (not logged in), remove margin */
+      body.no-sidebar .main-content {
+        margin-left: 0;
       }
 
       /* ===== FLASH MESSAGES ===== */
@@ -204,6 +210,9 @@
         }
         .menu-toggle {
           display: block;
+        }
+        body.no-sidebar .menu-toggle {
+          display: none; /* hide toggle button when not logged in */
         }
       }
 
@@ -518,8 +527,9 @@
       }
     </style>
   </head>
-  <body>
+  <body class="{% if not session.get('user_id') %}no-sidebar{% endif %}">
     <!-- ===== SIDEBAR ===== -->
+    {% if session.get('user_id') %}
     <div class="sidebar" id="sidebar">
       <div class="logo">
         <h2><i class="fas fa-shield-halved"></i> Sentinel AI</h2>
@@ -615,12 +625,15 @@
         </a>
       </div>
     </div>
+    {% endif %}
 
     <!-- ===== MAIN CONTENT ===== -->
     <div class="main-content">
+      {% if session.get('user_id') %}
       <button class="menu-toggle" onclick="toggleSidebar()">
         <i class="fas fa-bars"></i>
       </button>
+      {% endif %}
 
       <!-- Flash Messages -->
       {% with messages = get_flashed_messages(with_categories=true) %} {% if

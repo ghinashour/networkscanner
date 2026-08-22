@@ -740,15 +740,36 @@ def cve_detail(cve_id):
         flash('Error loading CVE details', 'danger')
         return redirect(url_for('devices'))
 
+# ========================= PAGINATION HELPER =========================
+def get_pagination_params(default_per_page=5, max_per_page=200):
+    """Extract and validate page and per_page from request args."""
+    try:
+        page = int(request.args.get('page', 1))
+    except ValueError:
+        page = 1
+    try:
+        per_page = int(request.args.get('per_page', default_per_page))
+    except ValueError:
+        per_page = default_per_page
+    # Clamp values
+    page = max(1, page)
+    per_page = max(1, min(max_per_page, per_page))
+    offset = (page - 1) * per_page
+    return page, per_page, offset
+
 # -------------------------------------------------------------------
-# API ROUTES – DEVICES
+# API ROUTES – DEVICES (with pagination)
 # -------------------------------------------------------------------
 @app.route('/api/devices')
 @login_required
 def get_devices():
     try:
+        page, per_page, offset = get_pagination_params()
         conn = get_db()
         cursor = conn.cursor()
+        # Total count
+        cursor.execute('SELECT COUNT(*) FROM devices')
+        total = cursor.fetchone()[0]
         cursor.execute('''
             SELECT d.*,
                    r.risk_score, r.risk_level, r.total_cves,
@@ -756,11 +777,20 @@ def get_devices():
             FROM devices d
             LEFT JOIN device_risks r ON d.id = r.device_id
             ORDER BY r.risk_score DESC NULLS LAST
-        ''')
+            LIMIT ? OFFSET ?
+        ''', (per_page, offset))
         devices = [dict(row) for row in cursor.fetchall()]
         conn.close()
-        record_audit('device_inventory_exported', 'device_inventory', 'all', {'count': len(devices), 'format': 'json_api'})
-        return jsonify({'success': True, 'devices': devices, 'count': len(devices)})
+        record_audit('device_inventory_exported', 'device_inventory', 'all', {'count': len(devices), 'format': 'json_api', 'page': page, 'per_page': per_page})
+        return jsonify({
+            'success': True,
+            'devices': devices,
+            'count': len(devices),
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'pages': (total + per_page - 1) // per_page
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -769,8 +799,11 @@ def get_devices():
 def get_device_locations():
     """Return devices with operational locations, without changing ML data."""
     try:
+        page, per_page, offset = get_pagination_params()
         conn = get_db()
         cursor = conn.cursor()
+        cursor.execute('SELECT COUNT(*) FROM devices')
+        total = cursor.fetchone()[0]
         cursor.execute('''
             SELECT d.id, d.ip_address, d.mac_address, d.hostname, d.device_type,
                    d.os, d.last_seen, r.risk_score, r.risk_level,
@@ -781,11 +814,20 @@ def get_device_locations():
             LEFT JOIN device_locations dl ON d.id = dl.device_id
             ORDER BY COALESCE(dl.site, 'Unassigned'), COALESCE(dl.zone, 'Unassigned'),
                      r.risk_score DESC NULLS LAST, d.ip_address
-        ''')
+            LIMIT ? OFFSET ?
+        ''', (per_page, offset))
         devices = [dict(row) for row in cursor.fetchall()]
         conn.close()
-        return jsonify({'success': True, 'devices': devices, 'count': len(devices),
-                        'location_mode': 'operational_zone'})
+        return jsonify({
+            'success': True,
+            'devices': devices,
+            'count': len(devices),
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'pages': (total + per_page - 1) // per_page,
+            'location_mode': 'operational_zone'
+        })
     except Exception as e:
         logger.error(f'Error loading device locations: {e}')
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -1218,22 +1260,32 @@ def get_risk_timeline():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # -------------------------------------------------------------------
-# API ROUTES – SCAN HISTORY
+# API ROUTES – SCAN HISTORY (with pagination)
 # -------------------------------------------------------------------
 @app.route('/api/scan/history')
 @login_required
 def get_scan_history():
     try:
+        page, per_page, offset = get_pagination_params()  # now uses default 5
         conn = get_db()
         cursor = conn.cursor()
+        cursor.execute('SELECT COUNT(*) FROM scan_history')
+        total = cursor.fetchone()[0]
         cursor.execute('''
             SELECT * FROM scan_history
             ORDER BY scan_time DESC
-            LIMIT 50
-        ''')
+            LIMIT ? OFFSET ?
+        ''', (per_page, offset))
         history = [dict(row) for row in cursor.fetchall()]
         conn.close()
-        return jsonify({'success': True, 'history': history})
+        return jsonify({
+            'success': True,
+            'history': history,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'pages': (total + per_page - 1) // per_page
+        })
     except Exception as e:
         logger.error(f"Error fetching scan history: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -1419,7 +1471,7 @@ def get_network_graph():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # -------------------------------------------------------------------
-# API ROUTES – AI RECOMMENDATIONS
+# API ROUTES – AI RECOMMENDATIONS (with pagination)
 # -------------------------------------------------------------------
 @app.route('/api/recommendations/generate', methods=['POST'])
 @login_required
@@ -1439,10 +1491,31 @@ def generate_recommendations():
 @login_required
 def get_all_recommendations():
     try:
+        page, per_page, offset = get_pagination_params()  # now uses default 5
         ai = AIRecommendations(DB_PATH)
-        recommendations = ai.get_all_recommendations()
-        summary = ai.get_recommendation_summary()
-        return jsonify({'success': True, 'recommendations': recommendations, 'summary': summary})
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('SELECT COUNT(*) FROM recommendations')
+        total = cursor.fetchone()[0]
+        cursor.execute('''
+            SELECT r.*, d.ip_address as device_ip, d.device_type
+            FROM recommendations r
+            LEFT JOIN devices d ON r.device_id = d.id
+            ORDER BY r.id DESC
+            LIMIT ? OFFSET ?
+        ''', (per_page, offset))
+        recommendations = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        summary = ai.get_recommendation_summary() if hasattr(ai, 'get_recommendation_summary') else {}
+        return jsonify({
+            'success': True,
+            'recommendations': recommendations,
+            'summary': summary,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'pages': (total + per_page - 1) // per_page
+        })
     except Exception as e:
         logger.error(f"Error getting recommendations: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -1542,20 +1615,34 @@ def get_anomalies():
         logger.error(f"Error fetching anomalies: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# -------------------------------------------------------------------
+# API ROUTES – AUDIT LOG (with pagination)
+# -------------------------------------------------------------------
 @app.route('/api/audit/log')
 @login_required
 @role_required(['administrator', 'manager'])
 def get_audit_log():
     try:
-        limit = min(max(int(request.args.get('limit', 100)), 1), 500)
+        page, per_page, offset = get_pagination_params()  # now uses default 5
         conn = get_db()
+        total = conn.execute('SELECT COUNT(*) FROM audit_log').fetchone()[0]
         rows = [dict(row) for row in conn.execute('''
             SELECT id, event_time, username, action, resource_type, resource_id,
                    details, ip_address, previous_hash, event_hash
-            FROM audit_log ORDER BY id DESC LIMIT ?
-        ''', (limit,)).fetchall()]
+            FROM audit_log
+            ORDER BY id DESC
+            LIMIT ? OFFSET ?
+        ''', (per_page, offset)).fetchall()]
         conn.close()
-        return jsonify({'success': True, 'events': rows, 'count': len(rows)})
+        return jsonify({
+            'success': True,
+            'events': rows,
+            'count': len(rows),
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'pages': (total + per_page - 1) // per_page
+        })
     except Exception as error:
         logger.error(f'Error loading audit log: {error}')
         return jsonify({'success': False, 'error': 'Audit log unavailable'}), 500
@@ -1601,7 +1688,8 @@ def utility_processor():
         'user_role': session.get('user_role'),
         'username': session.get('username'),
         'full_name': session.get('full_name'),
-        'has_permission': has_permission
+        'has_permission': has_permission,
+        'DEFAULT_PAGE_SIZE': 5   # frontend can use this for consistent pagination
     }
 
 # -------------------------------------------------------------------
@@ -1621,6 +1709,7 @@ if __name__ == '__main__':
             print("📝 Default credentials: admin / admin123")
             print("📧 Email reports will be sent using the configured SMTP settings.")
             print("✅ Background scanning and PDF export enabled.")
+            print("✅ Pagination enabled for all large data endpoints (5 per page).")
             app.run(debug=True, host='0.0.0.0', port=port)
             break
         except:
