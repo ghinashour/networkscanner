@@ -161,18 +161,6 @@
     color: var(--accent2);
     font: 12px monospace;
   }
-  .query-row {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 13px;
-  }
-  .query-row input {
-    flex: 1;
-    padding: 10px 12px;
-  }
-  .query-row button {
-    white-space: nowrap;
-  }
   .query-chips {
     display: flex;
     flex-wrap: wrap;
@@ -187,21 +175,29 @@
     border-radius: 999px;
     padding: 6px 9px;
     font-size: 11px;
+    transition: all 0.2s;
   }
   .query-chip:hover {
     color: var(--accent);
     border-color: var(--accent);
+    background: #0f3448;
+  }
+  .watch-table-wrap {
+    overflow-x: auto;
+    width: 100%;
   }
   .watch-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 12px;
+    min-width: 480px;
   }
   .watch-table th,
   .watch-table td {
     padding: 9px 7px;
     border-bottom: 1px solid #214157;
     text-align: left;
+    white-space: nowrap;
   }
   .watch-table th {
     color: var(--text-secondary);
@@ -211,6 +207,11 @@
   }
   .watch-table td:last-child {
     text-align: right;
+  }
+  .watch-table td:first-child {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .empty-soc {
     color: var(--text-secondary);
@@ -306,15 +307,7 @@
   </section>
   <section class="soc-panel">
     <h2><i class="fas fa-magnifying-glass-chart"></i> AI Investigation</h2>
-    <div class="query-row">
-      <input
-        id="socQuery"
-        placeholder="Ask about the current network..."
-        onkeydown="if (event.key === 'Enter') runSocQuery();"
-      /><button class="btn btn-primary btn-sm" onclick="runSocQuery()">
-        <i class="fas fa-arrow-right"></i>
-      </button>
-    </div>
+    <!-- Removed text input – only shortcut chips remain -->
     <div class="query-chips">
       <button class="query-chip" onclick="useSocQuery('Show critical devices')">
         Critical devices</button
@@ -330,29 +323,33 @@
       </button>
     </div>
     <div class="brief" id="queryResult">
-      <div class="empty-soc">Ask a focused question or choose a shortcut.</div>
+      <div class="empty-soc">
+        Choose a shortcut above to start investigating.
+      </div>
     </div>
   </section>
 </div>
 
 <section class="soc-panel" style="margin-top: 16px">
   <h2><i class="fas fa-eye"></i> Watchlist Devices</h2>
-  <table class="watch-table">
-    <thead>
-      <tr>
-        <th>Device</th>
-        <th>Type</th>
-        <th>Risk</th>
-        <th>Last seen</th>
-        <th>Score</th>
-      </tr>
-    </thead>
-    <tbody id="watchBody">
-      <tr>
-        <td colspan="5" class="empty-soc">Loading watchlist...</td>
-      </tr>
-    </tbody>
-  </table>
+  <div class="watch-table-wrap">
+    <table class="watch-table">
+      <thead>
+        <tr>
+          <th>Device</th>
+          <th>Type</th>
+          <th>Risk</th>
+          <th>Last seen</th>
+          <th>Score</th>
+        </tr>
+      </thead>
+      <tbody id="watchBody">
+        <tr>
+          <td colspan="5" class="empty-soc">Loading watchlist...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </section>
 
 <script>
@@ -369,10 +366,25 @@
           '"': "&quot;",
         })[c],
     );
+
+  // ---- Cache-busting fetch ----
   function socFetch(url) {
-    return fetch(url).then((r) => r.json());
+    // Append a timestamp to avoid caching
+    const separator = url.includes("?") ? "&" : "?";
+    return fetch(`${url}${separator}_=${Date.now()}`).then((r) => r.json());
   }
+
   function loadSoc() {
+    // Show loading indicators (optional)
+    document.getElementById("socBrief").innerHTML =
+      '<div class="empty-soc"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+    document.getElementById("signalList").innerHTML =
+      '<div class="empty-soc"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+    document.getElementById("priorityList").innerHTML =
+      '<div class="empty-soc"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+    document.getElementById("watchBody").innerHTML =
+      '<tr><td colspan="5" class="empty-soc"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+
     Promise.all([
       socFetch("/api/statistics/overview"),
       socFetch("/api/devices"),
@@ -391,6 +403,7 @@
           `<span style="color:var(--critical)"><i class="fas fa-circle-xmark"></i> Intelligence feed unavailable: ${socEsc(error.message)}</span>`;
       });
   }
+
   function renderSoc() {
     const s = socState.stats,
       devices = socState.devices;
@@ -449,30 +462,24 @@
           .join("")
       : '<tr><td colspan="5" class="empty-soc">No watchlist data.</td></tr>';
   }
+
   function useSocQuery(query) {
-    document.getElementById("socQuery").value = query;
-    runSocQuery();
-  }
-  function runSocQuery() {
-    const query = document
-      .getElementById("socQuery")
-      .value.trim()
-      .toLowerCase();
+    // Update result area using the same logic as before (no input needed)
+    const q = query.toLowerCase();
     const devices = socState.devices;
     let result = "";
-    if (!query) return;
-    if (query.includes("critical")) {
+    if (q.includes("critical")) {
       const rows = devices
         .filter((d) => ["CRITICAL", "HIGH"].includes(d.risk_level))
         .slice(0, 8);
       result = rows.length
         ? `<strong>${rows.length} priority assets:</strong><br>${rows.map((d) => `${socEsc(d.hostname || d.ip_address)} · ${socEsc(d.risk_level)} · score ${Number(d.risk_score || 0).toFixed(1)}`).join("<br>")}`
         : "No critical or high-risk assets in the current feed.";
-    } else if (query.includes("anomal")) {
+    } else if (q.includes("anomal")) {
       result = socState.anomalies.length
         ? `<strong>${socState.anomalies.length} anomaly records available.</strong><br>Review the Anomaly Detection and Devices pages for detailed evidence.`
         : "No anomaly records are currently available.";
-    } else if (query.includes("router")) {
+    } else if (q.includes("router")) {
       const rows = devices.filter((d) =>
         (d.device_type || "").toLowerCase().includes("router"),
       );
@@ -483,11 +490,38 @@
             `${socEsc(d.ip_address)} · ${socEsc(d.hostname || "unnamed")} · ${socEsc(d.risk_level || "unrated")}`,
         )
         .join("<br>")}`;
+    } else if (q.includes("changed")) {
+      // Quick "what changed" – show last two scans
+      fetch(`/api/scan/history?_=${Date.now()}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success && data.history && data.history.length >= 2) {
+            const latest = data.history[0];
+            const previous = data.history[1];
+            const diff =
+              (latest.total_devices || 0) - (previous.total_devices || 0);
+            const sign = diff > 0 ? "+" : "";
+            document.getElementById("queryResult").innerHTML =
+              `<strong>Scan comparison:</strong><br>
+               Latest (${latest.scan_time}): ${latest.total_devices} devices<br>
+               Previous (${previous.scan_time}): ${previous.total_devices} devices<br>
+               Change: ${sign}${diff} devices`;
+          } else {
+            document.getElementById("queryResult").innerHTML =
+              "Not enough scan history to compare.";
+          }
+        })
+        .catch(() => {
+          document.getElementById("queryResult").innerHTML =
+            "Could not retrieve scan history.";
+        });
+      return; // handled asynchronously
     } else {
       result = `<strong>Investigation context:</strong><br>${socState.stats.total_devices || devices.length} devices, ${socState.stats.total_vulnerabilities || 0} vulnerabilities, ${socState.anomalies.length} anomaly signals. Use a shortcut for a focused triage view.`;
     }
     document.getElementById("queryResult").innerHTML = result;
   }
+
   function trainSocAnomalies() {
     fetch("/api/anomalies/train", { method: "POST" })
       .then((r) => r.json())
@@ -496,6 +530,7 @@
         loadSoc();
       });
   }
+
   document.addEventListener("DOMContentLoaded", loadSoc);
 </script>
 {% endblock %}
