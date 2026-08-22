@@ -16,6 +16,7 @@ import io
 from datetime import datetime, timedelta
 from functools import wraps
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from openai import OpenAI
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -1064,105 +1065,125 @@ def get_statistics_overview():
         logger.error(f"Error getting statistics: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ========================= AI ASSISTANT (REAL LLM) =========================
+def fallback_assistant(question):
+    """Simple rule-based fallback when the LLM API fails."""
+    q = question.lower()
+    if "critical" in q or "priority" in q:
+        answer = "I can't connect to the AI engine right now. Based on cached data, prioritize the highest risk devices. Use the SOC page for details."
+    elif "anomal" in q:
+        answer = "Assistant is temporarily unavailable. Please check the Anomaly Detection section for current signals."
+    elif "router" in q:
+        answer = "Unable to reach AI service. Use the Devices page to filter by device type."
+    elif "remediat" in q:
+        answer = "AI service is offline. Please review the Recommendations page for remediation steps."
+    else:
+        answer = "Assistant is temporarily unavailable. Please try again later or use the dashboard and SOC page directly."
+    return jsonify({'success': True, 'answer': answer, 'intent': 'fallback', 'sources': ['cached data']})
+
 @app.route('/api/ai-assistant/chat', methods=['POST'])
 @login_required
 def ai_assistant_chat():
-    """Answer bounded, evidence-based questions from the current project data."""
+    question = ""  # define default value
     try:
-        payload = request.get_json(silent=True) or {}
-        question = str(payload.get('question', '')).strip()
+        data = request.get_json(silent=True) or {}
+        question = data.get('question', '').strip()
         if not question:
             return jsonify({'success': False, 'error': 'Question is required'}), 400
-        if len(question) > 500:
-            return jsonify({'success': False, 'error': 'Question is too long'}), 400
 
-        normalized = question.lower()
+        # Gather live context
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute('SELECT COUNT(*) AS total FROM devices')
-        total_devices = cursor.fetchone()['total'] or 0
+        cursor.execute('SELECT COUNT(*) FROM devices')
+        total_devices = cursor.fetchone()[0] or 0
         cursor.execute('''
-            SELECT COUNT(*) AS total, COALESCE(SUM(CASE WHEN c.severity = 'CRITICAL' THEN 1 ELSE 0 END), 0) AS critical
+            SELECT COUNT(*) AS total,
+                   SUM(CASE WHEN severity = 'CRITICAL' THEN 1 ELSE 0 END) AS critical
             FROM device_vulnerabilities dv JOIN cves c ON dv.cve_id = c.cve_id
         ''')
-        vulnerability_totals = dict(cursor.fetchone())
+        vuln_stats = cursor.fetchone()
+        total_vulns = vuln_stats[0] or 0
+        critical_vulns = vuln_stats[1] or 0
         cursor.execute('''
-            SELECT d.ip_address, d.hostname, d.device_type, d.os, d.last_seen,
-                   COALESCE(r.risk_score, 0) AS risk_score, COALESCE(r.risk_level, 'NONE') AS risk_level,
-                   COALESCE(r.total_cves, 0) AS total_cves,
-                   dl.site, dl.building, dl.floor, dl.zone
-            FROM devices d LEFT JOIN device_risks r ON d.id = r.device_id
-            LEFT JOIN device_locations dl ON d.id = dl.device_id
-            ORDER BY risk_score DESC, total_cves DESC LIMIT 8
+            SELECT d.ip_address, d.hostname, d.device_type,
+                   COALESCE(r.risk_score, 0) AS risk_score,
+                   COALESCE(r.risk_level, 'NONE') AS risk_level,
+                   COALESCE(r.total_cves, 0) AS total_cves
+            FROM devices d
+            LEFT JOIN device_risks r ON d.id = r.device_id
+            ORDER BY risk_score DESC NULLS LAST LIMIT 5
         ''')
-        priority_devices = [dict(row) for row in cursor.fetchall()]
+        top_devices = [dict(row) for row in cursor.fetchall()]
+        cursor.execute('SELECT COUNT(*) FROM anomaly_scores WHERE label = "anomaly"')
+        anomaly_count = cursor.fetchone()[0] or 0
         conn.close()
 
-        if any(term in normalized for term in ('explain', 'why is', 'why are')):
-            target = priority_devices[0] if priority_devices else None
-            answer = (f"{target['hostname'] or target['ip_address']} is prioritized because it has {target['total_cves']} CVEs, a {target['risk_level']} risk level, and a risk score of {target['risk_score']}. Validate open services and patch exposure before containment.") if target else 'No scored device is available to explain yet.'
-            intent = 'risk_explanation'
-        elif any(term in normalized for term in ('compare scan', 'scan comparison', 'what changed')):
-            conn = get_db()
-            scans = [dict(row) for row in conn.execute('SELECT scan_time, target, total_devices FROM scan_history ORDER BY id DESC LIMIT 2').fetchall()]
-            conn.close()
-            answer = ('Latest scan comparison:\n' + '\n'.join(f"{item['scan_time']} · {item['target']} · {item['total_devices'] or 0} devices" for item in scans)) if scans else 'There are not enough completed scans to compare yet.'
-            intent = 'scan_comparison'
-        elif any(term in normalized for term in ('subnet', 'segment', 'network range')):
-            groups = {}
-            for item in priority_devices:
-                parts = (item['ip_address'] or '').split('.')
-                key = '.'.join(parts[:3]) + '.0/24' if len(parts) == 4 else 'unknown'
-                groups[key] = groups.get(key, 0) + 1
-            answer = 'Subnet summary:\n' + '\n'.join(f'{key}: {count} priority devices in current feed' for key, count in groups.items())
-            intent = 'subnet_summary'
-        elif any(term in normalized for term in ('attack path', 'lateral movement', 'attack route')):
-            target = priority_devices[0] if priority_devices else None
-            answer = (f"Likely attack path hypothesis: exposed services on {target['hostname'] or target['ip_address']} ({target['risk_level']} risk) could provide an initial foothold, followed by subnet-level lateral movement. Confirm with Network Topology and service evidence; this is a hypothesis, not proof of compromise.") if target else 'No prioritized asset is available for an attack-path hypothesis.'
-            intent = 'attack_path_hypothesis'
-        elif any(term in normalized for term in ('incident', 'contain', 'build an incident')):
-            target = priority_devices[0] if priority_devices else None
-            incident = f"Incident draft: investigate {target['hostname'] or target['ip_address']} ({target['risk_level']} risk), preserve scan evidence, restrict unnecessary exposure, validate patches, and document containment." if target else 'Incident draft requires at least one scored device.'
-            record_audit('copilot_incident_drafted', 'device', target['ip_address'] if target else None, {'question': question, 'draft': incident})
-            answer = incident
-            intent = 'incident_draft'
-        elif any(term in normalized for term in ('executive report', 'executive summary', 'briefing')):
-            answer = f"Executive briefing: {total_devices} devices monitored, {vulnerability_totals['total']} vulnerability records, and {vulnerability_totals['critical']} critical findings. Immediate focus should be critical-risk assets, remediation ownership, and scan-to-scan change tracking."
-            intent = 'executive_brief'
-        elif any(term in normalized for term in ('where', 'location', 'floor', 'room', 'campus')):
-            located = [item for item in priority_devices if item['floor'] or item['zone']]
-            answer = ('The highest-priority devices with operational placement are:\n' + '\n'.join(f"{item['hostname'] or item['ip_address']} - {item['floor'] or 'Floor unassigned'} / {item['zone'] or 'Room unassigned'}" for item in located[:6])) if located else 'No priority devices have operational floor or room assignments yet. Open Campus Map to place them.'
-            intent = 'campus_location'
-        elif any(term in normalized for term in ('critical', 'riskiest', 'highest risk', 'priority', 'investigate first', 'which devices')):
-            listed = priority_devices[:5]
-            lines = [f"{item['hostname'] or item['ip_address']} ({item['ip_address']}) - {item['risk_level']} risk, {item['total_cves']} CVEs" for item in listed]
-            answer = f"I found {vulnerability_totals['critical']} critical findings across {total_devices} devices. The highest-priority assets are:\n" + ('\n'.join(lines) if lines else 'No prioritized devices are available.')
-            intent = 'risk_triage'
-        elif any(term in normalized for term in ('router', 'routers', 'network equipment')):
-            routers = [item for item in priority_devices if 'router' in (item['device_type'] or '').lower()]
-            answer = f"The current priority feed contains {len(routers)} router records in its top results. Use Devices for the complete inventory.\n" + ('\n'.join(f"{item['ip_address']} - {item['risk_level']} risk" for item in routers) if routers else 'No routers appeared in the current priority feed.')
-            intent = 'network_equipment'
-        elif any(term in normalized for term in ('anomal', 'unusual', 'behavior')):
-            ensure_tables()
-            anomalies = get_anomaly_summary()
-            answer = f"The anomaly engine currently reports {len(anomalies)} signal records. Open AI SOC or the anomaly view for the detailed evidence and model scores."
-            intent = 'anomaly_review'
-        elif any(term in normalized for term in ('recommend', 'next step', 'fix', 'remediat')):
-            cursor = get_db().cursor()
-            cursor.execute("SELECT title, priority, status FROM recommendations WHERE status NOT IN ('done', 'dismissed') ORDER BY CASE priority WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END LIMIT 5")
-            recommendations = [dict(row) for row in cursor.fetchall()]
-            answer = ('Your current remediation queue is:\n' + '\n'.join(f"{item['priority'].upper()}: {item['title']} ({item['status']})" for item in recommendations)) if recommendations else 'There are no open recommendations. Generate a new recommendation set from the Recommendations page.'
-            intent = 'remediation'
-        else:
-            answer = f"I can help investigate this network. Current context: {total_devices} devices, {vulnerability_totals['total']} vulnerability records, and {vulnerability_totals['critical']} critical findings. Try asking about critical devices, routers, anomalies, recommendations, or campus locations."
-            intent = 'overview'
+        context = (f"Total devices: {total_devices}. "
+                   f"Vulnerabilities: {total_vulns} total, {critical_vulns} critical. "
+                   f"Anomalies: {anomaly_count}. "
+                   "Top risk devices: " +
+                   ", ".join(
+                       f"{d['hostname'] or d['ip_address']} (score {d['risk_score']}, {d['risk_level']})"
+                       for d in top_devices
+                   ))
 
-        record_audit('copilot_query', 'ai_assistant', intent, {'question': question})
-        return jsonify({'success': True, 'answer': answer, 'intent': intent, 'sources': ['live device inventory', 'risk and vulnerability tables', 'scan history', 'operational location data']})
+        # ================================================================
+        # ENHANCED SYSTEM PROMPT – fully aware of the application
+        # ================================================================
+        system_prompt = (
+            "You are Sentinel AI, the intelligent assistant for the Network Security Dashboard. "
+            "This application is a full-featured network security scanner that helps administrators "
+            "monitor and secure their network. Key features include:\n"
+            "- **Network Scanning**: Discover devices, open ports, services, and operating systems via nmap.\n"
+            "- **Vulnerability Analysis**: Correlate CVEs (from NVD) with running services.\n"
+            "- **Risk Scoring**: Calculate a risk score (0-10) and severity level for each device.\n"
+            "- **Anomaly Detection**: Uses Isolation Forest (unsupervised ML) to flag unusual device behavior.\n"
+            "- **Threat Intelligence**: Integrates CISA KEV, EPSS, and exploit count to prioritize risks.\n"
+            "- **Reporting**: Generate PDF reports and send them via email.\n"
+            "- **AI Assistant**: You are this assistant – you answer questions about the network's state.\n\n"
+            "You have access to live data from the current scan history and device inventory. "
+            "Always ground your answers in the provided data. If asked about how to use the tool, "
+            "refer to the features listed above and guide the user to the relevant pages (Dashboard, "
+            "Scan, Devices, AI SOC, Reports, etc.).\n\n"
+            "Current network state:\n"
+            f"{context}\n\n"
+            "User question: {question}\n"
+            "Answer concisely and clearly. If the question is about the application itself, explain "
+            "the relevant feature and direct the user to the appropriate page."
+        )
+
+        # ========== GROQ API INTEGRATION ==========
+        client = OpenAI(
+            base_url="https://api.groq.com/openai/v1",
+            api_key=os.environ.get("GROQ_API_KEY"),
+        )
+        response = client.chat.completions.create(
+            model="openai/gpt-oss-120b",   # or "openai/gpt-oss-20b" for faster responses
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": question}
+            ],
+            temperature=0.3,
+            max_tokens=500
+        )
+        answer = response.choices[0].message.content.strip() # type: ignore
+
+        record_audit('copilot_query', 'ai_assistant', 'llm', {'question': question, 'answer': answer[:200]})
+
+        return jsonify({
+            'success': True,
+            'answer': answer,
+            'intent': 'llm_generated',
+            'sources': ['live device inventory', 'vulnerability stats', 'anomaly signals', 'risk scores']
+        })
+
     except Exception as e:
-        logger.error(f'AI assistant error: {e}')
-        return jsonify({'success': False, 'error': 'The assistant could not query current project data'}), 500
+        logger.error(f"LLM assistant error: {e}")
+        return fallback_assistant(question)
 
+# -------------------------------------------------------------------
+# API ROUTES – STATISTICS (continued)
+# -------------------------------------------------------------------
 @app.route('/api/statistics/advanced')
 @login_required
 def get_advanced_stats():
@@ -1710,6 +1731,7 @@ if __name__ == '__main__':
             print("📧 Email reports will be sent using the configured SMTP settings.")
             print("✅ Background scanning and PDF export enabled.")
             print("✅ Pagination enabled for all large data endpoints (5 per page).")
+            print("✅ AI Assistant powered by Groq API (free tier).")
             app.run(debug=True, host='0.0.0.0', port=port)
             break
         except:

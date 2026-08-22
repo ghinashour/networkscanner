@@ -1,4 +1,8 @@
 {% extends "base.html" %} {% block content %}
+<!-- Include Markdown and sanitizer libraries (if not already in base) -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
+
 <style>
   .assistant-shell {
     max-width: 1100px;
@@ -84,7 +88,48 @@
     color: #c9dbe1;
     font-size: 13px;
     line-height: 1.6;
-    white-space: pre-line;
+    word-wrap: break-word;
+  }
+  .message-bubble p {
+    margin: 0 0 0.5em 0;
+  }
+  .message-bubble p:last-child {
+    margin-bottom: 0;
+  }
+  .message-bubble ul,
+  .message-bubble ol {
+    margin: 0.5em 0;
+    padding-left: 1.5em;
+  }
+  .message-bubble table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.5em 0;
+    font-size: 12px;
+  }
+  .message-bubble th,
+  .message-bubble td {
+    border: 1px solid #3a6a7a;
+    padding: 6px 8px;
+    text-align: left;
+  }
+  .message-bubble th {
+    background: #1a3a4a;
+  }
+  .message-bubble code {
+    background: #0a1a22;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 12px;
+    color: #d4e6ed;
+  }
+  .message-bubble pre {
+    background: #0a1a22;
+    padding: 10px;
+    border-radius: 5px;
+    overflow-x: auto;
+    font-size: 12px;
+    border: 1px solid #2a5a6e;
   }
   .message.user .message-bubble {
     background: #12372f;
@@ -258,6 +303,8 @@
   const chatWindow = document.getElementById("chatWindow");
   const input = document.getElementById("assistantInput");
   const form = document.getElementById("assistantForm");
+
+  // Escape only for user input and metadata
   const escapeAssistant = (value) =>
     String(value ?? "").replace(
       /[&<>'"]/g,
@@ -270,18 +317,37 @@
           '"': "&quot;",
         })[c],
     );
+
   function addMessage(text, role = "assistant", meta = "Sentinel AI") {
     const wrapper = document.createElement("div");
     wrapper.className = `message ${role === "user" ? "user" : ""}`;
-    wrapper.innerHTML = `<div class="message-avatar"><i class="fas fa-${role === "user" ? "user" : "brain"}"></i></div><div><div class="message-bubble">${escapeAssistant(text).replace(/\n/g, "<br>")}</div><div class="message-meta">${meta}</div></div>`;
+    let bubbleContent;
+    if (role === "user") {
+      // User messages: plain text with line breaks
+      bubbleContent = escapeAssistant(text).replace(/\n/g, "<br>");
+    } else {
+      // Assistant messages: render Markdown → HTML → sanitize
+      const rawHtml = marked.parse(text);
+      const sanitized = DOMPurify.sanitize(rawHtml);
+      bubbleContent = sanitized;
+    }
+    wrapper.innerHTML = `
+      <div class="message-avatar"><i class="fas fa-${role === "user" ? "user" : "brain"}"></i></div>
+      <div>
+        <div class="message-bubble">${bubbleContent}</div>
+        <div class="message-meta">${meta}</div>
+      </div>
+    `;
     chatWindow.appendChild(wrapper);
     chatWindow.scrollTop = chatWindow.scrollHeight;
     return wrapper;
   }
+
   function askSuggested(question) {
     input.value = question;
     form.requestSubmit();
   }
+
   function askAssistant(question) {
     const pending = addMessage(
       "Analyzing current security evidence...",
@@ -311,6 +377,7 @@
         addMessage(error.message, "assistant", "Sentinel AI · error");
       });
   }
+
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const question = input.value.trim();
