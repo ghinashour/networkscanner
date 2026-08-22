@@ -3,16 +3,459 @@
   rel="stylesheet"
   href="{{ url_for('static', filename='css/style.css') }}"
 />
+
+<!-- ==================== NEON OVERRIDES ==================== -->
+<style>
+  /* ---------- Root neon palette ---------- */
+  :root {
+    --neon-cyan: #00f0ff;
+    --neon-magenta: #ff00d4;
+    --neon-lime: #39ff14;
+    --neon-orange: #ff6a00;
+    --neon-pink: #ff4d6d;
+    --neon-yellow: #ffe600;
+    --neon-purple: #b300ff;
+    --neon-glow-cyan: 0 0 10px #00f0ff88, 0 0 30px #00f0ff44;
+    --neon-glow-magenta: 0 0 10px #ff00d488, 0 0 30px #ff00d444;
+    --neon-glow-lime: 0 0 10px #39ff1488, 0 0 30px #39ff1444;
+    --bg-dark: #0b0d1a;
+    --bg-card: #111427;
+    --border-neon: 1px solid #00f0ff44;
+  }
+
+  /* ---------- General ---------- */
+  body {
+    background: var(--bg-dark) !important;
+  }
+  .page-header h1 {
+    color: var(--neon-cyan);
+    text-shadow: var(--neon-glow-cyan);
+  }
+
+  /* ---------- Buttons with neon glow ---------- */
+  .btn-primary {
+    background: var(--neon-cyan) !important;
+    color: #0b0d1a !important;
+    border: none !important;
+    box-shadow: var(--neon-glow-cyan);
+    transition: all 0.3s ease;
+  }
+  .btn-primary:hover {
+    box-shadow:
+      0 0 20px #00f0ff,
+      0 0 40px #00f0ff88;
+    transform: scale(1.02);
+  }
+  .btn-success {
+    background: var(--neon-lime) !important;
+    color: #0b0d1a !important;
+    border: none !important;
+    box-shadow: var(--neon-glow-lime);
+    transition: all 0.3s ease;
+  }
+  .btn-success:hover {
+    box-shadow:
+      0 0 20px #39ff14,
+      0 0 40px #39ff1488;
+    transform: scale(1.02);
+  }
+  .btn-danger {
+    background: var(--neon-pink) !important;
+    color: #fff !important;
+    border: none !important;
+    box-shadow: 0 0 10px #ff4d6d88;
+    transition: all 0.3s ease;
+  }
+  .btn-danger:hover {
+    box-shadow:
+      0 0 20px #ff4d6d,
+      0 0 40px #ff4d6d88;
+    transform: scale(1.02);
+  }
+  .btn-warning {
+    background: var(--neon-orange) !important;
+    color: #0b0d1a !important;
+    border: none !important;
+    box-shadow: 0 0 10px #ff6a0088;
+    transition: all 0.3s ease;
+  }
+  .btn-warning:hover {
+    box-shadow:
+      0 0 20px #ff6a00,
+      0 0 40px #ff6a0088;
+    transform: scale(1.02);
+  }
+  .btn-info {
+    background: var(--neon-purple) !important;
+    color: #fff !important;
+    border: none !important;
+    box-shadow: 0 0 10px #b300ff88;
+    transition: all 0.3s ease;
+  }
+  .btn-info:hover {
+    box-shadow:
+      0 0 20px #b300ff,
+      0 0 40px #b300ff88;
+    transform: scale(1.02);
+  }
+  .btn-secondary {
+    background: #2a2f4a !important;
+    color: #ccd !important;
+    border: 1px solid #4a4f6a !important;
+    transition: all 0.3s ease;
+  }
+  .btn-secondary:hover {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 15px #00f0ff44;
+  }
+
+  /* ---------- Filters & Cards ---------- */
+  .filter-section {
+    background: var(--bg-card);
+    border: var(--border-neon);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--neon-glow-cyan);
+  }
+  .filter-item label {
+    color: var(--neon-cyan);
+    text-shadow: 0 0 5px #00f0ff66;
+    font-weight: 600;
+  }
+  .filter-item input,
+  .filter-item select {
+    background: #1a1e33 !important;
+    border: 1px solid #3a4f6a !important;
+    color: #e0e6ed !important;
+    border-radius: 6px;
+    padding: 6px 10px;
+    transition: border 0.3s;
+  }
+  .filter-item input:focus,
+  .filter-item select:focus {
+    border-color: var(--neon-cyan) !important;
+    box-shadow: 0 0 15px #00f0ff55;
+  }
+  .filter-count {
+    color: var(--neon-lime);
+    font-weight: 600;
+    text-shadow: 0 0 8px #39ff1466;
+  }
+
+  /* ---------- Table ---------- */
+  .table-container {
+    background: var(--bg-card);
+    border: var(--border-neon);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: var(--neon-glow-cyan);
+  }
+  .device-table th {
+    color: var(--neon-cyan) !important;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-shadow: 0 0 8px #00f0ff66;
+    border-bottom: 2px solid #00f0ff66 !important;
+  }
+  .device-table td {
+    border-bottom: 1px solid #2a3f5a66;
+  }
+  .device-row:hover {
+    background: #1a2f4a55 !important;
+    box-shadow: inset 0 0 30px #00f0ff22;
+  }
+  .device-row.selected {
+    background: #00f0ff22 !important;
+    border-left: 3px solid var(--neon-cyan);
+  }
+
+  /* ---------- Risk Badges (neon) ---------- */
+  .risk-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    display: inline-block;
+    box-shadow: 0 0 10px currentColor44;
+  }
+  .risk-CRITICAL {
+    background: #ff004488;
+    color: #ff4d6d;
+    border: 1px solid #ff4d6d;
+    box-shadow: 0 0 20px #ff4d6d88;
+  }
+  .risk-HIGH {
+    background: #ff6a0044;
+    color: #ff6a00;
+    border: 1px solid #ff6a00;
+    box-shadow: 0 0 20px #ff6a0088;
+  }
+  .risk-MEDIUM {
+    background: #ffe60044;
+    color: #ffe600;
+    border: 1px solid #ffe600;
+    box-shadow: 0 0 20px #ffe60088;
+  }
+  .risk-LOW {
+    background: #39ff1444;
+    color: #39ff14;
+    border: 1px solid #39ff14;
+    box-shadow: 0 0 20px #39ff1488;
+  }
+  .risk-NONE {
+    background: #00f0ff22;
+    color: #00f0ff;
+    border: 1px solid #00f0ff66;
+    box-shadow: 0 0 20px #00f0ff44;
+  }
+
+  /* ---------- Device Type ---------- */
+  .device-type {
+    background: #2a3f5a55;
+    color: #aaccdd;
+    padding: 2px 10px;
+    border-radius: 12px;
+    border: 1px solid #3a5f7a88;
+  }
+
+  /* ---------- Status Badge (Live) ---------- */
+  .status-badge.status-fresh {
+    background: #39ff1422;
+    color: var(--neon-lime);
+    border: 1px solid var(--neon-lime);
+    box-shadow: 0 0 15px #39ff1466;
+    animation: pulse-live 2s infinite;
+  }
+  @keyframes pulse-live {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  .status-badge.status-error {
+    background: #ff4d6d22;
+    color: var(--neon-pink);
+    border: 1px solid var(--neon-pink);
+    box-shadow: 0 0 15px #ff4d6d66;
+  }
+
+  /* ---------- Pagination ---------- */
+  .pagination-btn {
+    background: transparent;
+    border: 1px solid #3a5f7a88;
+    color: #aaccdd;
+    padding: 4px 12px;
+    margin: 0 2px;
+    border-radius: 4px;
+    transition: all 0.3s;
+  }
+  .pagination-btn:hover {
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+    box-shadow: 0 0 15px #00f0ff44;
+  }
+  .pagination-btn.active {
+    background: var(--neon-cyan);
+    color: #0b0d1a;
+    border-color: var(--neon-cyan);
+    box-shadow: var(--neon-glow-cyan);
+  }
+  .pagination-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  /* ---------- Modal (neon) ---------- */
+  .modal-content {
+    background: var(--bg-card);
+    border: 2px solid var(--neon-cyan);
+    box-shadow:
+      0 0 50px #00f0ff44,
+      inset 0 0 30px #00f0ff11;
+    border-radius: 16px;
+  }
+  .modal-header h2 {
+    color: var(--neon-cyan);
+    text-shadow: var(--neon-glow-cyan);
+  }
+  .modal-close {
+    color: var(--neon-cyan);
+    transition: 0.3s;
+  }
+  .modal-close:hover {
+    color: var(--neon-magenta);
+    transform: rotate(90deg);
+  }
+
+  /* ---------- Detail Grid ---------- */
+  .device-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .detail-item {
+    background: #1a1e33;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border-left: 3px solid var(--neon-cyan);
+  }
+  .detail-label {
+    color: #88aacc;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+  }
+  .detail-value {
+    color: #e0e6ed;
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  /* ---------- Vulnerability Items ---------- */
+  .vulnerability-item {
+    background: #12172e;
+    border-left: 4px solid var(--neon-cyan);
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    transition: 0.3s;
+  }
+  .vulnerability-item:hover {
+    background: #1a2a4a;
+    box-shadow: 0 0 20px #00f0ff22;
+  }
+  .vuln-header a {
+    color: var(--neon-cyan) !important;
+    font-weight: 700;
+  }
+  .vuln-severity {
+    font-size: 11px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-weight: 700;
+  }
+  .vuln-service {
+    color: #88aacc;
+    font-size: 12px;
+  }
+  .vuln-description {
+    color: #bccddc;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  .no-vulnerabilities {
+    color: var(--neon-lime);
+    text-shadow: 0 0 10px #39ff1466;
+    padding: 20px;
+    text-align: center;
+  }
+
+  /* ---------- Comparison Cards ---------- */
+  .comparison-card {
+    background: #12172e;
+    border: 1px solid #2a4f6a;
+    border-radius: 8px;
+    padding: 16px;
+    transition: 0.3s;
+  }
+  .comparison-card:hover {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 25px #00f0ff44;
+  }
+  .comparison-card h5 {
+    color: var(--neon-cyan);
+    text-shadow: 0 0 8px #00f0ff66;
+  }
+  .comparison-stats .stat {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px solid #2a3f5a44;
+  }
+  .stat-label {
+    color: #88aacc;
+  }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    background: var(--bg-card);
+    border: 1px solid var(--neon-cyan);
+    box-shadow: 0 0 30px #00f0ff33;
+    border-radius: 8px;
+    color: #e0e6ed;
+  }
+  .toast-success {
+    border-color: var(--neon-lime);
+    box-shadow: 0 0 30px #39ff1433;
+  }
+  .toast-error {
+    border-color: var(--neon-pink);
+    box-shadow: 0 0 30px #ff4d6d33;
+  }
+  .toast-info {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 30px #00f0ff33;
+  }
+  .toast-warning {
+    border-color: var(--neon-orange);
+    box-shadow: 0 0 30px #ff6a0033;
+  }
+  .toast-title {
+    color: var(--neon-cyan);
+    font-weight: 700;
+  }
+
+  /* ---------- Skeleton ---------- */
+  .skeleton-line {
+    background: linear-gradient(90deg, #1a2a4a 25%, #2a4a6a 50%, #1a2a4a 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    height: 14px;
+    margin: 6px 0;
+    border-radius: 4px;
+  }
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  /* ---------- Responsive tweaks ---------- */
+  @media (max-width: 768px) {
+    .device-detail-grid {
+      grid-template-columns: 1fr;
+    }
+    .filter-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+</style>
+
+<!-- ==================== PAGE CONTENT ==================== -->
 <div class="page-header">
-  <h1><i class="fas fa-laptop"></i> Devices</h1>
+  <h1><i class="fas fa-laptop-code"></i> Devices</h1>
   <div class="header-actions">
     <span
       id="connectionStatus"
       style="font-size: 12px; color: var(--text-secondary); margin-right: 15px"
     >
-      <span id="liveIndicator" class="status-badge status-fresh"
-        ><i class="fas fa-circle"></i> Live</span
-      >
+      <span id="liveIndicator" class="status-badge status-fresh">
+        <i class="fas fa-circle"></i> Live
+      </span>
     </span>
     <button
       class="btn btn-info btn-sm"
@@ -22,15 +465,15 @@
       <i class="fas fa-keyboard"></i> Shortcuts
     </button>
     <button class="btn btn-primary btn-sm" onclick="refreshDevices()">
-      <i class="fas fa-sync"></i> Refresh
+      <i class="fas fa-sync-alt"></i> Refresh
     </button>
     {% if user_role in ['administrator', 'manager'] %}
-    <div class="btn-group">
+    <div class="btn-group" style="position: relative; display: inline-block">
       <button
         class="btn btn-success btn-sm dropdown-toggle"
         onclick="toggleExportDropdown()"
       >
-        <i class="fas fa-download"></i> Export
+        <i class="fas fa-file-export"></i> Export
       </button>
       <div
         id="exportDropdown"
@@ -38,20 +481,81 @@
         style="
           display: none;
           position: absolute;
-          background: var(--bg-secondary);
-          border: 1px solid var(--border-color);
+          background: #111427;
+          border: 1px solid #00f0ff66;
           border-radius: 6px;
           padding: 5px 0;
           min-width: 150px;
           z-index: 100;
+          right: 0;
+          box-shadow: 0 0 30px #00f0ff33;
         "
       >
-        <button onclick="exportData('csv')" class="dropdown-item">CSV</button>
-        <button onclick="exportData('json')" class="dropdown-item">JSON</button>
-        <button onclick="exportData('pdf')" class="dropdown-item">
-          PDF Report
+        <button
+          onclick="exportData('csv')"
+          class="dropdown-item"
+          style="
+            background: transparent;
+            color: #e0e6ed;
+            border: none;
+            padding: 8px 16px;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            transition: 0.3s;
+          "
+        >
+          <i class="fas fa-file-csv" style="color: var(--neon-cyan)"></i> CSV
         </button>
-        <button onclick="exportData('excel')" class="dropdown-item">
+        <button
+          onclick="exportData('json')"
+          class="dropdown-item"
+          style="
+            background: transparent;
+            color: #e0e6ed;
+            border: none;
+            padding: 8px 16px;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            transition: 0.3s;
+          "
+        >
+          <i class="fas fa-file-code" style="color: var(--neon-magenta)"></i>
+          JSON
+        </button>
+        <button
+          onclick="exportData('pdf')"
+          class="dropdown-item"
+          style="
+            background: transparent;
+            color: #e0e6ed;
+            border: none;
+            padding: 8px 16px;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            transition: 0.3s;
+          "
+        >
+          <i class="fas fa-file-pdf" style="color: var(--neon-pink)"></i> PDF
+          Report
+        </button>
+        <button
+          onclick="exportData('excel')"
+          class="dropdown-item"
+          style="
+            background: transparent;
+            color: #e0e6ed;
+            border: none;
+            padding: 8px 16px;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            transition: 0.3s;
+          "
+        >
+          <i class="fas fa-file-excel" style="color: var(--neon-lime)"></i>
           Excel
         </button>
       </div>
@@ -62,7 +566,14 @@
 
 <!-- Filter Section -->
 <div class="filter-section">
-  <div class="filter-grid">
+  <div
+    class="filter-grid"
+    style="
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+    "
+  >
     <div class="filter-item">
       <label><i class="fas fa-search"></i> Search</label>
       <input
@@ -73,7 +584,7 @@
       />
     </div>
     <div class="filter-item">
-      <label>Risk Level</label>
+      <label><i class="fas fa-triangle-exclamation"></i> Risk Level</label>
       <select id="riskFilter" onchange="applyFilters()">
         <option value="all">All Risks</option>
         <option value="CRITICAL">Critical</option>
@@ -84,7 +595,7 @@
       </select>
     </div>
     <div class="filter-item">
-      <label>Device Type</label>
+      <label><i class="fas fa-tag"></i> Device Type</label>
       <select id="typeFilter" onchange="applyFilters()">
         <option value="all">All Types</option>
         <option value="Server">Server</option>
@@ -95,45 +606,76 @@
       </select>
     </div>
     <div class="filter-item">
-      <label>Sort By</label>
+      <label><i class="fas fa-sort"></i> Sort By</label>
       <select id="sortFilter" onchange="applyFilters()">
-        <option value="risk_desc">Risk (High to Low)</option>
-        <option value="risk_asc">Risk (Low to High)</option>
+        <option value="risk_desc">Risk (High → Low)</option>
+        <option value="risk_asc">Risk (Low → High)</option>
         <option value="ip">IP Address</option>
         <option value="cves">Most CVEs</option>
         <option value="hostname">Hostname</option>
       </select>
     </div>
   </div>
-  <div class="filter-actions">
+  <div
+    class="filter-actions"
+    style="
+      margin-top: 12px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    "
+  >
     <button onclick="applyFilters()" class="btn btn-primary btn-sm">
-      Apply Filters
+      <i class="fas fa-filter"></i> Apply Filters
     </button>
     <button onclick="clearFilters()" class="btn btn-secondary btn-sm">
-      Clear
+      <i class="fas fa-eraser"></i> Clear
     </button>
     <span id="filterCount" class="filter-count"></span>
   </div>
 </div>
 
 <!-- Bulk Actions -->
-<div class="bulk-actions" id="bulkActions" style="display: none">
-  <span class="selected-count">
+<div
+  class="bulk-actions"
+  id="bulkActions"
+  style="
+    display: none;
+    background: #111427;
+    border: 1px solid #00f0ff66;
+    border-radius: 8px;
+    padding: 12px 20px;
+    margin-bottom: 16px;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  "
+>
+  <span
+    class="selected-count"
+    style="color: var(--neon-cyan); font-weight: 600"
+  >
+    <i class="fas fa-check-circle"></i>
     <span id="selectedCount">0</span> devices selected
   </span>
-  <div class="bulk-buttons">
+  <div class="bulk-buttons" style="display: flex; gap: 8px; flex-wrap: wrap">
     <button onclick="bulkRescan()" class="btn btn-warning btn-sm">
       <i class="fas fa-rotate"></i> Rescan
     </button>
     <button onclick="bulkExport()" class="btn btn-success btn-sm">
       <i class="fas fa-file-export"></i> Export
     </button>
-    <button onclick="bulkTag()" class="btn btn-info btn-sm">🏷️ Add Tags</button>
+    <button onclick="bulkTag()" class="btn btn-info btn-sm">
+      <i class="fas fa-tags"></i> Add Tags
+    </button>
     <button onclick="bulkRemediate()" class="btn btn-danger btn-sm">
       <i class="fas fa-shield-halved"></i> Remediate
     </button>
     <button onclick="clearSelection()" class="btn btn-secondary btn-sm">
-      ✕ Clear
+      <i class="fas fa-times"></i> Clear
     </button>
   </div>
 </div>
@@ -149,6 +691,7 @@
               type="checkbox"
               id="selectAll"
               onchange="toggleAllDevices()"
+              style="accent-color: var(--neon-cyan)"
             />
           </th>
           <th style="padding: 12px; text-align: left">IP Address</th>
@@ -179,8 +722,18 @@
   </div>
 
   <!-- Pagination -->
-  <div class="pagination-container">
-    <div class="pagination-info">
+  <div
+    class="pagination-container"
+    style="
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      flex-wrap: wrap;
+      gap: 12px;
+    "
+  >
+    <div class="pagination-info" style="color: #88aacc">
       Showing <span id="pageStart">1</span> to <span id="pageEnd">10</span> of
       <span id="totalDevices">0</span> devices
     </div>
@@ -197,11 +750,48 @@
 </div>
 
 <!-- Device Detail Modal -->
-<div id="deviceModal" class="modal" style="display: none">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h2 id="modalTitle" style="color: var(--accent)">Device Details</h2>
-      <button onclick="closeModal()" class="modal-close">✕</button>
+<div
+  id="deviceModal"
+  class="modal"
+  style="
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  "
+>
+  <div
+    class="modal-content"
+    style="
+      max-width: 800px;
+      width: 95%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 20px;
+    "
+  >
+    <div
+      class="modal-header"
+      style="
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      "
+    >
+      <h2 id="modalTitle" style="color: var(--neon-cyan)">
+        <i class="fas fa-desktop"></i> Device Details
+      </h2>
+      <button
+        onclick="closeModal()"
+        class="modal-close"
+        style="background: none; border: none; font-size: 28px; cursor: pointer"
+      >
+        ✕
+      </button>
     </div>
     <div id="modalContent"></div>
   </div>
@@ -209,1029 +799,920 @@
 
 <!-- Comparison View -->
 <div id="comparisonView" style="display: none; margin-top: 20px">
-  <div class="comparison-header">
-    <h4><i class="fas fa-code-compare"></i> Device Comparison</h4>
+  <div
+    class="comparison-header"
+    style="
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    "
+  >
+    <h4 style="color: var(--neon-cyan); text-shadow: var(--neon-glow-cyan)">
+      <i class="fas fa-code-compare"></i> Device Comparison
+    </h4>
     <button onclick="closeComparison()" class="btn btn-secondary btn-sm">
-      Close
+      <i class="fas fa-times"></i> Close
     </button>
   </div>
-  <div id="comparisonContent" class="comparison-grid"></div>
+  <div
+    id="comparisonContent"
+    class="comparison-grid"
+    style="
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    "
+  ></div>
 </div>
 
-<!-- Toast Notification Container -->
-<div id="toastContainer" class="toast-container"></div>
+<!-- Toast Container -->
+<div
+  id="toastContainer"
+  class="toast-container"
+  style="
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  "
+></div>
 
 <!-- Shortcuts Modal -->
-<div id="shortcutsModal" class="modal" style="display: none">
-  <div class="modal-content" style="max-width: 500px">
-    <div class="modal-header">
-      <h2>⌨️ Keyboard Shortcuts</h2>
-      <button onclick="closeShortcuts()" class="modal-close">✕</button>
+<div
+  id="shortcutsModal"
+  class="modal"
+  style="
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  "
+>
+  <div
+    class="modal-content"
+    style="max-width: 500px; width: 95%; padding: 20px"
+  >
+    <div
+      class="modal-header"
+      style="
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      "
+    >
+      <h2 style="color: var(--neon-cyan)">
+        <i class="fas fa-keyboard"></i> Keyboard Shortcuts
+      </h2>
+      <button
+        onclick="closeShortcuts()"
+        class="modal-close"
+        style="background: none; border: none; font-size: 28px; cursor: pointer"
+      >
+        ✕
+      </button>
     </div>
-    <div class="shortcuts-grid">
-      <div class="shortcut-item">
-        <kbd>Ctrl+R</kbd> <span>Refresh devices</span>
+    <div
+      class="shortcuts-grid"
+      style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px"
+    >
+      <div
+        class="shortcut-item"
+        style="
+          display: flex;
+          justify-content: space-between;
+          padding: 6px 10px;
+          background: #1a1e33;
+          border-radius: 4px;
+        "
+      >
+        <kbd
+          style="
+            background: #0b0d1a;
+            color: var(--neon-cyan);
+            padding: 2px 10px;
+            border-radius: 4px;
+            border: 1px solid #00f0ff66;
+          "
+          >Ctrl+R</kbd
+        >
+        <span style="color: #ccd">Refresh</span>
       </div>
-      <div class="shortcut-item">
-        <kbd>Ctrl+F</kbd> <span>Focus search</span>
+      <div
+        class="shortcut-item"
+        style="
+          display: flex;
+          justify-content: space-between;
+          padding: 6px 10px;
+          background: #1a1e33;
+          border-radius: 4px;
+        "
+      >
+        <kbd
+          style="
+            background: #0b0d1a;
+            color: var(--neon-cyan);
+            padding: 2px 10px;
+            border-radius: 4px;
+            border: 1px solid #00f0ff66;
+          "
+          >Ctrl+F</kbd
+        >
+        <span style="color: #ccd">Focus search</span>
       </div>
-      <div class="shortcut-item">
-        <kbd>Ctrl+E</kbd> <span>Export data</span>
+      <div
+        class="shortcut-item"
+        style="
+          display: flex;
+          justify-content: space-between;
+          padding: 6px 10px;
+          background: #1a1e33;
+          border-radius: 4px;
+        "
+      >
+        <kbd
+          style="
+            background: #0b0d1a;
+            color: var(--neon-cyan);
+            padding: 2px 10px;
+            border-radius: 4px;
+            border: 1px solid #00f0ff66;
+          "
+          >Ctrl+E</kbd
+        >
+        <span style="color: #ccd">Export</span>
       </div>
-      <div class="shortcut-item"><kbd>Esc</kbd> <span>Close modal</span></div>
-      <div class="shortcut-item">
-        <kbd>Ctrl+A</kbd> <span>Select all devices</span>
+      <div
+        class="shortcut-item"
+        style="
+          display: flex;
+          justify-content: space-between;
+          padding: 6px 10px;
+          background: #1a1e33;
+          border-radius: 4px;
+        "
+      >
+        <kbd
+          style="
+            background: #0b0d1a;
+            color: var(--neon-cyan);
+            padding: 2px 10px;
+            border-radius: 4px;
+            border: 1px solid #00f0ff66;
+          "
+          >Esc</kbd
+        >
+        <span style="color: #ccd">Close modal</span>
       </div>
-      <div class="shortcut-item">
-        <kbd>Ctrl+Shift+C</kbd> <span>Clear selection</span>
+      <div
+        class="shortcut-item"
+        style="
+          display: flex;
+          justify-content: space-between;
+          padding: 6px 10px;
+          background: #1a1e33;
+          border-radius: 4px;
+        "
+      >
+        <kbd
+          style="
+            background: #0b0d1a;
+            color: var(--neon-cyan);
+            padding: 2px 10px;
+            border-radius: 4px;
+            border: 1px solid #00f0ff66;
+          "
+          >Ctrl+A</kbd
+        >
+        <span style="color: #ccd">Select all</span>
       </div>
-      <div class="shortcut-item">
-        <kbd>Ctrl+.</kbd> <span>Toggle comparison</span>
+      <div
+        class="shortcut-item"
+        style="
+          display: flex;
+          justify-content: space-between;
+          padding: 6px 10px;
+          background: #1a1e33;
+          border-radius: 4px;
+        "
+      >
+        <kbd
+          style="
+            background: #0b0d1a;
+            color: var(--neon-cyan);
+            padding: 2px 10px;
+            border-radius: 4px;
+            border: 1px solid #00f0ff66;
+          "
+          >Ctrl+Shift+C</kbd
+        >
+        <span style="color: #ccd">Clear selection</span>
       </div>
-      <div class="shortcut-item"><kbd>?</kbd> <span>Show this help</span></div>
+      <div
+        class="shortcut-item"
+        style="
+          display: flex;
+          justify-content: space-between;
+          padding: 6px 10px;
+          background: #1a1e33;
+          border-radius: 4px;
+        "
+      >
+        <kbd
+          style="
+            background: #0b0d1a;
+            color: var(--neon-cyan);
+            padding: 2px 10px;
+            border-radius: 4px;
+            border: 1px solid #00f0ff66;
+          "
+          >Ctrl+.</kbd
+        >
+        <span style="color: #ccd">Toggle comparison</span>
+      </div>
+      <div
+        class="shortcut-item"
+        style="
+          display: flex;
+          justify-content: space-between;
+          padding: 6px 10px;
+          background: #1a1e33;
+          border-radius: 4px;
+        "
+      >
+        <kbd
+          style="
+            background: #0b0d1a;
+            color: var(--neon-cyan);
+            padding: 2px 10px;
+            border-radius: 4px;
+            border: 1px solid #00f0ff66;
+          "
+          >?</kbd
+        >
+        <span style="color: #ccd">Show help</span>
+      </div>
     </div>
   </div>
 </div>
 
+<!-- ==================== SCRIPTS ==================== -->
 <script>
-    // ==================== Configuration ====================
-    const CONFIG = {
-      pageSize: 10,
-      currentPage: 1,
-      totalDevices: 0,
-      filteredDevices: [],
-      selectedDevices: new Set(),
-      wsReconnectAttempts: 0,
-      maxReconnectAttempts: 5,
-      deviceHistory: {}
-    };
+  // ==================== Configuration ====================
+  const CONFIG = {
+    pageSize: 10,
+    currentPage: 1,
+    totalDevices: 0,
+    filteredDevices: [],
+    selectedDevices: new Set(),
+    wsReconnectAttempts: 0,
+    maxReconnectAttempts: 5,
+    deviceHistory: {}
+  };
 
-    // ==================== WebSocket Connection ====================
-    let ws = null;
+  // ==================== WebSocket Connection ====================
+  let ws = null;
 
-    function connectWebSocket() {
-      if (ws && ws.readyState === WebSocket.OPEN) return;
-
-      try {
-        ws = new WebSocket(`wss://${window.location.host}/ws/devices`);
-
-        ws.onopen = function() {
-          updateConnectionStatus(true);
-          showToast('Connected', 'Live device updates enabled', 'success', 2000);
-          CONFIG.wsReconnectAttempts = 0;
-        };
-
-        ws.onmessage = function(event) {
-          const data = JSON.parse(event.data);
-          handleDeviceUpdate(data);
-        };
-
-        ws.onclose = function() {
-          updateConnectionStatus(false);
-          if (CONFIG.wsReconnectAttempts < CONFIG.maxReconnectAttempts) {
-            CONFIG.wsReconnectAttempts++;
-            setTimeout(connectWebSocket, 5000 * CONFIG.wsReconnectAttempts);
-          }
-        };
-
-        ws.onerror = function(error) {
-          console.error('WebSocket error:', error);
-        };
-      } catch (error) {
-        console.error('WebSocket connection failed:', error);
-      }
-    }
-
-    function updateConnectionStatus(connected) {
-      const indicator = document.getElementById('liveIndicator');
-      if (connected) {
-        indicator.innerHTML = '<i class="fas fa-circle"></i> Live';
-        indicator.className = 'status-badge status-fresh';
-      } else {
-        indicator.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Reconnecting...';
-        indicator.className = 'status-badge status-error';
-      }
-    }
-
-    function handleDeviceUpdate(data) {
-      switch(data.action) {
-        case 'new_device':
-          addDeviceToTable(data.device);
-          showToast('New Device', `${data.device.ip_address} discovered`, 'info');
-          break;
-        case 'device_updated':
-          updateDeviceInTable(data.device);
-          break;
-        case 'device_removed':
-          removeDeviceFromTable(data.device_id);
-          break;
-        case 'vulnerability_discovered':
-          highlightVulnerableDevice(data.device_id);
-          showToast('Vulnerability Found', `New CVE on ${data.ip_address}`, 'error');
-          break;
-        case 'scan_completed':
-          refreshDevices();
-          showToast('Scan Complete', `Device ${data.ip_address} scan finished`, 'success');
-          break;
-      }
-    }
-
-    // ==================== Debounced Search ====================
-    function debounce(func, wait) {
-      let timeout;
-      return function(...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), wait);
+  function connectWebSocket() {
+    if (ws && ws.readyState === WebSocket.OPEN) return;
+    try {
+      ws = new WebSocket(`wss://${window.location.host}/ws/devices`);
+      ws.onopen = function() {
+        updateConnectionStatus(true);
+        showToast('Connected', 'Live device updates enabled', 'success', 2000);
+        CONFIG.wsReconnectAttempts = 0;
       };
+      ws.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        handleDeviceUpdate(data);
+      };
+      ws.onclose = function() {
+        updateConnectionStatus(false);
+        if (CONFIG.wsReconnectAttempts < CONFIG.maxReconnectAttempts) {
+          CONFIG.wsReconnectAttempts++;
+          setTimeout(connectWebSocket, 5000 * CONFIG.wsReconnectAttempts);
+        }
+      };
+      ws.onerror = function(error) {
+        console.error('WebSocket error:', error);
+      };
+    } catch (error) {
+      console.error('WebSocket connection failed:', error);
     }
+  }
 
-    const debouncedSearch = debounce(function(query) {
-      applyFilters();
-    }, 300);
+  function updateConnectionStatus(connected) {
+    const indicator = document.getElementById('liveIndicator');
+    if (connected) {
+      indicator.innerHTML = '<i class="fas fa-circle"></i> Live';
+      indicator.className = 'status-badge status-fresh';
+    } else {
+      indicator.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Reconnecting...';
+      indicator.className = 'status-badge status-error';
+    }
+  }
 
-    // ==================== Rate Limiter ====================
-    const rateLimiter = {
-      requests: {},
-      limit: 60,
-      window: 60000,
+  function handleDeviceUpdate(data) {
+    switch(data.action) {
+      case 'new_device':
+        addDeviceToTable(data.device);
+        showToast('New Device', `${data.device.ip_address} discovered`, 'info');
+        break;
+      case 'device_updated':
+        updateDeviceInTable(data.device);
+        break;
+      case 'device_removed':
+        removeDeviceFromTable(data.device_id);
+        break;
+      case 'vulnerability_discovered':
+        highlightVulnerableDevice(data.device_id);
+        showToast('Vulnerability Found', `New CVE on ${data.ip_address}`, 'error');
+        break;
+      case 'scan_completed':
+        refreshDevices();
+        showToast('Scan Complete', `Device ${data.ip_address} scan finished`, 'success');
+        break;
+    }
+  }
 
-      checkLimit(endpoint) {
-        const now = Date.now();
-        const key = `${endpoint}`;
-        if (!this.requests[key]) {
-          this.requests[key] = [];
-        }
-        this.requests[key] = this.requests[key].filter(
-          time => now - time < this.window
-        );
-        if (this.requests[key].length >= this.limit) {
-          throw new Error('Rate limit exceeded. Please wait.');
-        }
-        this.requests[key].push(now);
-      }
+  // ==================== Debounced Search ====================
+  function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), wait);
     };
+  }
+  const debouncedSearch = debounce(function(query) {
+    applyFilters();
+  }, 300);
 
-    // ==================== Audit Logging ====================
-    function logAuditEvent(action, deviceId, details) {
-      try {
-        fetch('/api/audit/log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: action,
-            device_id: deviceId,
-            details: details,
-            timestamp: new Date().toISOString()
-          })
-        }).catch(() => {});
-      } catch (error) {
-        // Silent fail for audit logs
-      }
+  // ==================== Rate Limiter ====================
+  const rateLimiter = {
+    requests: {},
+    limit: 60,
+    window: 60000,
+    checkLimit(endpoint) {
+      const now = Date.now();
+      const key = `${endpoint}`;
+      if (!this.requests[key]) this.requests[key] = [];
+      this.requests[key] = this.requests[key].filter(time => now - time < this.window);
+      if (this.requests[key].length >= this.limit) throw new Error('Rate limit exceeded. Please wait.');
+      this.requests[key].push(now);
     }
+  };
 
-    // ==================== Toast Notifications ====================
-    function showToast(title, message, type = 'info', duration = 5000) {
-      const container = document.getElementById('toastContainer');
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${type}`;
-      toast.innerHTML = `
-        <button class="toast-close" onclick="this.parentElement.remove()">×</button>
-        <div class="toast-title">${title}</div>
-        <div class="toast-message">${message}</div>
-      `;
-      container.appendChild(toast);
-
-      if (duration > 0) {
-        setTimeout(() => {
-          toast.classList.add('toast-hidden');
-          setTimeout(() => toast.remove(), 300);
-        }, duration);
-      }
-    }
-
-    // ==================== Export Dropdown ====================
-    function toggleExportDropdown() {
-      const dropdown = document.getElementById('exportDropdown');
-      dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-    }
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(e) {
-      const dropdown = document.getElementById('exportDropdown');
-      if (dropdown && !e.target.closest('.btn-group')) {
-        dropdown.style.display = 'none';
-      }
-    });
-
-    // ==================== Export Functionality ====================
-    function exportData(format) {
-      const selectedDevices = getSelectedDevices();
-      const endpoint = selectedDevices.length > 0
-        ? '/api/export/devices/selected'
-        : '/api/export/devices';
-
-      showToast('Exporting', `Preparing ${format.toUpperCase()} export...`, 'info', 0);
-
-      const exportBtn = document.querySelector('.btn-success');
-      exportBtn.disabled = true;
-      exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exporting...';
-
-      fetch(endpoint, {
+  // ==================== Audit Logging ====================
+  function logAuditEvent(action, deviceId, details) {
+    try {
+      fetch('/api/audit/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          format: format,
-          device_ids: Array.from(selectedDevices),
-          include_vulnerabilities: true,
-          include_history: true
+          action: action,
+          device_id: deviceId,
+          details: details,
+          timestamp: new Date().toISOString()
         })
-      })
-      .then(response => {
-        if (!response.ok) throw new Error('Export failed');
-        return response.blob();
-      })
-      .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `devices_export_${new Date().toISOString().slice(0,10)}.${format}`;
-        a.click();
-        window.URL.revokeObjectURL(url);
+      }).catch(() => {});
+    } catch (error) {}
+  }
 
-        logAuditEvent('export_devices', null, `Exported ${format} format`);
-        closeAllToasts();
-        showToast('Export Complete', `Downloaded ${format.toUpperCase()} file`, 'success');
+  // ==================== Toast Notifications ====================
+  function showToast(title, message, type = 'info', duration = 5000) {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+      <button class="toast-close" onclick="this.parentElement.remove()" style="background: none; border: none; color: #ccd; font-size: 20px; cursor: pointer; float: right;">×</button>
+      <div class="toast-title">${title}</div>
+      <div class="toast-message">${message}</div>
+    `;
+    container.appendChild(toast);
+    if (duration > 0) {
+      setTimeout(() => {
+        toast.classList.add('toast-hidden');
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+  }
+
+  // ==================== Export Dropdown ====================
+  function toggleExportDropdown() {
+    const dropdown = document.getElementById('exportDropdown');
+    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+  }
+  document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('exportDropdown');
+    if (dropdown && !e.target.closest('.btn-group')) {
+      dropdown.style.display = 'none';
+    }
+  });
+
+  // ==================== Export Functionality ====================
+  function exportData(format) {
+    const selectedDevices = getSelectedDevices();
+    const endpoint = selectedDevices.length > 0 ? '/api/export/devices/selected' : '/api/export/devices';
+    showToast('Exporting', `Preparing ${format.toUpperCase()} export...`, 'info', 0);
+    const exportBtn = document.querySelector('.btn-success');
+    exportBtn.disabled = true;
+    exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exporting...';
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        format: format,
+        device_ids: Array.from(selectedDevices),
+        include_vulnerabilities: true,
+        include_history: true
+      })
+    })
+    .then(response => {
+      if (!response.ok) throw new Error('Export failed');
+      return response.blob();
+    })
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `devices_export_${new Date().toISOString().slice(0,10)}.${format}`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      logAuditEvent('export_devices', null, `Exported ${format} format`);
+      closeAllToasts();
+      showToast('Export Complete', `Downloaded ${format.toUpperCase()} file`, 'success');
+    })
+    .catch(error => {
+      showToast('Export Failed', error.message, 'error');
+    })
+    .finally(() => {
+      exportBtn.disabled = false;
+      exportBtn.innerHTML = '<i class="fas fa-file-export"></i> Export';
+      document.getElementById('exportDropdown').style.display = 'none';
+    });
+  }
+  function closeAllToasts() {
+    document.querySelectorAll('.toast').forEach(t => t.remove());
+  }
+
+  // ==================== Device Management ====================
+  let currentDevices = [];
+  let filteredDevices = [];
+
+  function refreshDevices() {
+    const tbody = document.getElementById('deviceTableBody');
+    tbody.innerHTML = `<tr><td colspan="9" class="loading-placeholder"><div class="skeleton-loader"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div></td></tr>`;
+    fetch('/api/devices')
+      .then(response => response.json())
+      .then(data => {
+        if (data.success && data.devices) {
+          currentDevices = data.devices;
+          CONFIG.totalDevices = currentDevices.length;
+          applyFilters();
+          updatePagination();
+        } else {
+          throw new Error('Invalid response');
+        }
       })
       .catch(error => {
-        showToast('Export Failed', error.message, 'error');
-      })
-      .finally(() => {
-        exportBtn.disabled = false;
-        exportBtn.innerHTML = '<i class="fas fa-download"></i> Export';
-        document.getElementById('exportDropdown').style.display = 'none';
+        showToast('Error', 'Failed to load devices', 'error');
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--neon-pink);"><i class="fas fa-triangle-exclamation"></i> Error loading devices<br><br><button onclick="refreshDevices()" class="btn btn-primary btn-sm"><i class="fas fa-sync-alt"></i> Retry</button></td></tr>`;
       });
+  }
+
+  function applyFilters() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const risk = document.getElementById('riskFilter').value;
+    const type = document.getElementById('typeFilter').value;
+    const sort = document.getElementById('sortFilter').value;
+    filteredDevices = currentDevices.filter(device => {
+      if (search) {
+        const searchable = `${device.ip_address} ${device.hostname || ''} ${device.device_type || ''} ${device.os || ''}`.toLowerCase();
+        if (!searchable.includes(search)) return false;
+      }
+      if (risk !== 'all' && device.risk_level !== risk) return false;
+      if (type !== 'all' && device.device_type !== type) return false;
+      return true;
+    });
+    filteredDevices.sort((a, b) => {
+      switch(sort) {
+        case 'risk_desc': const riskOrder = {'CRITICAL':4,'HIGH':3,'MEDIUM':2,'LOW':1,'NONE':0}; return (riskOrder[b.risk_level]||0) - (riskOrder[a.risk_level]||0);
+        case 'risk_asc': const riskOrderAsc = {'CRITICAL':4,'HIGH':3,'MEDIUM':2,'LOW':1,'NONE':0}; return (riskOrderAsc[a.risk_level]||0) - (riskOrderAsc[b.risk_level]||0);
+        case 'ip': return a.ip_address.localeCompare(b.ip_address);
+        case 'cves': return (b.total_cves||0) - (a.total_cves||0);
+        case 'hostname': return (a.hostname||'').localeCompare(b.hostname||'');
+        default: return 0;
+      }
+    });
+    document.getElementById('filterCount').textContent = `${filteredDevices.length} devices (${currentDevices.length} total)`;
+    CONFIG.currentPage = 1;
+    renderTablePage();
+    updatePagination();
+  }
+
+  function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('riskFilter').value = 'all';
+    document.getElementById('typeFilter').value = 'all';
+    document.getElementById('sortFilter').value = 'risk_desc';
+    applyFilters();
+  }
+
+  function renderTablePage() {
+    const start = (CONFIG.currentPage - 1) * CONFIG.pageSize;
+    const end = Math.min(start + CONFIG.pageSize, filteredDevices.length);
+    const pageDevices = filteredDevices.slice(start, end);
+    const tbody = document.getElementById('deviceTableBody');
+    if (pageDevices.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-secondary);">${currentDevices.length === 0 ? 'No devices found. Run a scan to discover devices.' : 'No devices match your filters'}</td></tr>`;
+      return;
     }
-
-    function closeAllToasts() {
-      document.querySelectorAll('.toast').forEach(t => t.remove());
-    }
-
-    // ==================== Device Management ====================
-    let currentDevices = [];
-    let filteredDevices = [];
-
-    function refreshDevices() {
-      const tbody = document.getElementById('deviceTableBody');
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="9" class="loading-placeholder">
-            <div class="skeleton-loader">
-              <div class="skeleton-line"></div>
-              <div class="skeleton-line"></div>
-              <div class="skeleton-line"></div>
-              <div class="skeleton-line"></div>
-            </div>
+    let html = '';
+    pageDevices.forEach(device => {
+      const riskLevel = device.risk_level || 'NONE';
+      const totalCVEs = device.total_cves || 0;
+      const criticalCVEs = device.critical_cves || 0;
+      const isSelected = CONFIG.selectedDevices.has(device.id);
+      html += `
+        <tr class="device-row ${riskLevel.toLowerCase()} ${isSelected ? 'selected' : ''}" data-id="${device.id}" data-risk="${riskLevel}">
+          <td style="padding: 10px; text-align: center;"><input type="checkbox" class="device-select" data-id="${device.id}" ${isSelected ? 'checked' : ''} onchange="toggleDevice(${device.id})" style="accent-color: var(--neon-cyan);"></td>
+          <td style="padding: 10px; font-weight: bold; color: var(--neon-cyan); text-shadow: 0 0 8px #00f0ff66;">${device.ip_address}</td>
+          <td style="padding: 10px;">${device.hostname || '-'}</td>
+          <td style="padding: 10px;"><span class="device-type">${device.device_type || 'Unknown'}</span></td>
+          <td style="padding: 10px;">${device.os || 'Unknown'}</td>
+          <td style="padding: 10px; text-align: center;"><span class="risk-badge risk-${riskLevel}">${riskLevel}</span></td>
+          <td style="padding: 10px; text-align: center;">${totalCVEs} ${criticalCVEs > 0 ? `(<i class="fas fa-circle-xmark" style="color: var(--neon-pink);"></i> ${criticalCVEs})` : ''}</td>
+          <td style="padding: 10px; text-align: center;"><canvas id="sparkline-${device.id}" width="80" height="20"></canvas></td>
+          <td style="padding: 10px; text-align: center;">
+            <button onclick="showDevice(${device.id})" class="btn btn-primary btn-sm" title="View Details"><i class="fas fa-eye"></i></button>
+            ${'{% if user_role in ["administrator", "manager"] %}'}
+            <button onclick="rescanDevice(${device.id})" class="btn btn-success btn-sm" title="Rescan"><i class="fas fa-scan"></i></button>
+            <button onclick="showHistory(${device.id})" class="btn btn-info btn-sm" title="History"><i class="fas fa-history"></i></button>
+            ${'{% endif %}'}
           </td>
         </tr>
       `;
+    });
+    tbody.innerHTML = html;
+    pageDevices.forEach(device => {
+      renderSparkline(device.id, device.history || []);
+    });
+    updateBulkActions();
+  }
 
-      fetch('/api/devices')
-        .then(response => response.json())
-        .then(data => {
-          if (data.success && data.devices) {
-            currentDevices = data.devices;
-            CONFIG.totalDevices = currentDevices.length;
-            applyFilters();
-            updatePagination();
-          } else {
-            throw new Error('Invalid response');
-          }
-        })
-        .catch(error => {
-          showToast('Error', 'Failed to load devices', 'error');
-          tbody.innerHTML = `
-            <tr>
-              <td colspan="9" style="text-align: center; padding: 40px; color: var(--critical);">
-                <i class="fas fa-triangle-exclamation"></i> Error loading devices
-                <br><br>
-                <button onclick="refreshDevices()" class="btn btn-primary btn-sm"><i class="fas fa-rotate"></i> Retry</button>
-              </td>
-            </tr>
-          `;
-        });
+  function updatePagination() {
+    const total = filteredDevices.length;
+    const start = (CONFIG.currentPage - 1) * CONFIG.pageSize + 1;
+    const end = Math.min(CONFIG.currentPage * CONFIG.pageSize, total);
+    document.getElementById('pageStart').textContent = total > 0 ? start : 0;
+    document.getElementById('pageEnd').textContent = end;
+    document.getElementById('totalDevices').textContent = total;
+    const totalPages = Math.ceil(total / CONFIG.pageSize);
+    let pageHtml = '';
+    for (let i = 1; i <= totalPages; i++) {
+      pageHtml += `<button onclick="goToPage(${i})" class="pagination-btn ${i === CONFIG.currentPage ? 'active' : ''}">${i}</button>`;
     }
+    document.getElementById('pageNumbers').innerHTML = pageHtml;
+    document.getElementById('prevPage').disabled = CONFIG.currentPage === 1;
+    document.getElementById('nextPage').disabled = CONFIG.currentPage === totalPages;
+  }
 
-    function applyFilters() {
-      const search = document.getElementById('searchInput').value.toLowerCase();
-      const risk = document.getElementById('riskFilter').value;
-      const type = document.getElementById('typeFilter').value;
-      const sort = document.getElementById('sortFilter').value;
+  function changePage(direction) {
+    if (direction === 'prev' && CONFIG.currentPage > 1) CONFIG.currentPage--;
+    else if (direction === 'next' && CONFIG.currentPage < Math.ceil(filteredDevices.length / CONFIG.pageSize)) CONFIG.currentPage++;
+    renderTablePage();
+    updatePagination();
+  }
 
-      filteredDevices = currentDevices.filter(device => {
-        // Search filter
-        if (search) {
-          const searchable = `${device.ip_address} ${device.hostname || ''} ${device.device_type || ''} ${device.os || ''}`.toLowerCase();
-          if (!searchable.includes(search)) return false;
-        }
+  function goToPage(page) {
+    CONFIG.currentPage = page;
+    renderTablePage();
+    updatePagination();
+  }
 
-        // Risk filter
-        if (risk !== 'all' && device.risk_level !== risk) return false;
-
-        // Type filter
-        if (type !== 'all' && device.device_type !== type) return false;
-
-        return true;
-      });
-
-      // Sort
-      filteredDevices.sort((a, b) => {
-        switch(sort) {
-          case 'risk_desc':
-            const riskOrder = { 'CRITICAL': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1, 'NONE': 0 };
-            return (riskOrder[b.risk_level] || 0) - (riskOrder[a.risk_level] || 0);
-          case 'risk_asc':
-            const riskOrderAsc = { 'CRITICAL': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1, 'NONE': 0 };
-            return (riskOrderAsc[a.risk_level] || 0) - (riskOrderAsc[b.risk_level] || 0);
-          case 'ip':
-            return a.ip_address.localeCompare(b.ip_address);
-          case 'cves':
-            return (b.total_cves || 0) - (a.total_cves || 0);
-          case 'hostname':
-            return (a.hostname || '').localeCompare(b.hostname || '');
-          default:
-            return 0;
-        }
-      });
-
-      document.getElementById('filterCount').textContent =
-        `${filteredDevices.length} devices (${currentDevices.length} total)`;
-
-      CONFIG.currentPage = 1;
-      renderTablePage();
-      updatePagination();
+  // ==================== Selection Management ====================
+  function toggleDevice(deviceId) {
+    if (CONFIG.selectedDevices.has(deviceId)) CONFIG.selectedDevices.delete(deviceId);
+    else CONFIG.selectedDevices.add(deviceId);
+    updateBulkActions();
+    renderTablePage(); // re-render to update checkboxes
+  }
+  function toggleAllDevices() {
+    const checked = document.getElementById('selectAll').checked;
+    const start = (CONFIG.currentPage - 1) * CONFIG.pageSize;
+    const end = Math.min(start + CONFIG.pageSize, filteredDevices.length);
+    const pageDevices = filteredDevices.slice(start, end);
+    pageDevices.forEach(device => {
+      if (checked) CONFIG.selectedDevices.add(device.id);
+      else CONFIG.selectedDevices.delete(device.id);
+    });
+    renderTablePage();
+    updateBulkActions();
+  }
+  function getSelectedDevices() {
+    return Array.from(CONFIG.selectedDevices).map(id => currentDevices.find(d => d.id === id)).filter(Boolean);
+  }
+  function clearSelection() {
+    CONFIG.selectedDevices.clear();
+    document.getElementById('selectAll').checked = false;
+    renderTablePage();
+    updateBulkActions();
+  }
+  function updateBulkActions() {
+    const count = CONFIG.selectedDevices.size;
+    const bulkActions = document.getElementById('bulkActions');
+    if (count > 0) {
+      bulkActions.style.display = 'flex';
+      document.getElementById('selectedCount').textContent = count;
+    } else {
+      bulkActions.style.display = 'none';
     }
+  }
 
-    function clearFilters() {
-      document.getElementById('searchInput').value = '';
-      document.getElementById('riskFilter').value = 'all';
-      document.getElementById('typeFilter').value = 'all';
-      document.getElementById('sortFilter').value = 'risk_desc';
-      applyFilters();
+  // ==================== Bulk Operations ====================
+  function bulkRescan() {
+    const devices = getSelectedDevices();
+    if (devices.length === 0) return;
+    if (confirm(`Rescan ${devices.length} devices?`)) {
+      showToast('Rescanning', `Starting scan for ${devices.length} devices...`, 'info');
+      devices.forEach(device => rescanDevice(device.id));
     }
-
-    function renderTablePage() {
-      const start = (CONFIG.currentPage - 1) * CONFIG.pageSize;
-      const end = Math.min(start + CONFIG.pageSize, filteredDevices.length);
-      const pageDevices = filteredDevices.slice(start, end);
-
-      const tbody = document.getElementById('deviceTableBody');
-
-      if (pageDevices.length === 0) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="9" style="text-align: center; padding: 40px; color: var(--text-secondary);">
-              ${currentDevices.length === 0 ? 'No devices found. Run a scan to discover devices.' : 'No devices match your filters'}
-            </td>
-          </tr>
-        `;
-        return;
-      }
-
-      let html = '';
-      pageDevices.forEach(device => {
-        const riskLevel = device.risk_level || 'NONE';
-        const totalCVEs = device.total_cves || 0;
-        const criticalCVEs = device.critical_cves || 0;
-        const isSelected = CONFIG.selectedDevices.has(device.id);
-
-        html += `
-          <tr class="device-row ${riskLevel.toLowerCase()} ${isSelected ? 'selected' : ''}"
-              data-id="${device.id}" data-risk="${riskLevel}">
-            <td style="padding: 10px; text-align: center;">
-              <input type="checkbox" class="device-select" data-id="${device.id}"
-                     ${isSelected ? 'checked' : ''} onchange="toggleDevice(${device.id})">
-            </td>
-            <td style="padding: 10px; font-weight: bold; color: var(--accent);">${device.ip_address}</td>
-            <td style="padding: 10px;">${device.hostname || '-'}</td>
-            <td style="padding: 10px;">
-              <span class="device-type">${device.device_type || 'Unknown'}</span>
-            </td>
-            <td style="padding: 10px;">${device.os || 'Unknown'}</td>
-            <td style="padding: 10px; text-align: center;">
-              <span class="risk-badge risk-${riskLevel}">
-                ${riskLevel}
-              </span>
-            </td>
-            <td style="padding: 10px; text-align: center;">
-              ${totalCVEs} ${criticalCVEs > 0 ? `(<i class="fas fa-circle-xmark"></i> ${criticalCVEs})` : ''}
-            </td>
-            <td style="padding: 10px; text-align: center;">
-              <canvas id="sparkline-${device.id}" width="80" height="20"></canvas>
-            </td>
-            <td style="padding: 10px; text-align: center;">
-              <button onclick="showDevice(${device.id})" class="btn btn-primary btn-sm" title="View Details">
-                <i class="fas fa-eye"></i>
-              </button>
-              ${'{% if user_role in ["administrator", "manager"] %}'}
-              <button onclick="rescanDevice(${device.id})" class="btn btn-success btn-sm" title="Rescan">
-                <i class="fas fa-scan"></i>
-              </button>
-              <button onclick="showHistory(${device.id})" class="btn btn-info btn-sm" title="History">
-                <i class="fas fa-history"></i>
-              </button>
-              ${'{% endif %}'}
-            </td>
-          </tr>
-        `;
-      });
-
-      tbody.innerHTML = html;
-
-      // Render sparklines
-      pageDevices.forEach(device => {
-        renderSparkline(device.id, device.history || []);
-      });
-
-      updateBulkActions();
-    }
-
-    function updatePagination() {
-      const total = filteredDevices.length;
-      const start = (CONFIG.currentPage - 1) * CONFIG.pageSize + 1;
-      const end = Math.min(CONFIG.currentPage * CONFIG.pageSize, total);
-
-      document.getElementById('pageStart').textContent = total > 0 ? start : 0;
-      document.getElementById('pageEnd').textContent = end;
-      document.getElementById('totalDevices').textContent = total;
-
-      const totalPages = Math.ceil(total / CONFIG.pageSize);
-      let pageHtml = '';
-      for (let i = 1; i <= totalPages; i++) {
-        pageHtml += `<button onclick="goToPage(${i})" class="pagination-btn ${i === CONFIG.currentPage ? 'active' : ''}">${i}</button>`;
-      }
-      document.getElementById('pageNumbers').innerHTML = pageHtml;
-
-      document.getElementById('prevPage').disabled = CONFIG.currentPage === 1;
-      document.getElementById('nextPage').disabled = CONFIG.currentPage === totalPages;
-    }
-
-    function changePage(direction) {
-      if (direction === 'prev' && CONFIG.currentPage > 1) {
-        CONFIG.currentPage--;
-      } else if (direction === 'next' && CONFIG.currentPage < Math.ceil(filteredDevices.length / CONFIG.pageSize)) {
-        CONFIG.currentPage++;
-      }
-      renderTablePage();
-      updatePagination();
-    }
-
-    function goToPage(page) {
-      CONFIG.currentPage = page;
-      renderTablePage();
-      updatePagination();
-    }
-
-    // ==================== Selection Management ====================
-    function toggleDevice(deviceId) {
-      if (CONFIG.selectedDevices.has(deviceId)) {
-        CONFIG.selectedDevices.delete(deviceId);
-      } else {
-        CONFIG.selectedDevices.add(deviceId);
-      }
-      updateBulkActions();
-    }
-
-    function toggleAllDevices() {
-      const checked = document.getElementById('selectAll').checked;
-      const start = (CONFIG.currentPage - 1) * CONFIG.pageSize;
-      const end = Math.min(start + CONFIG.pageSize, filteredDevices.length);
-      const pageDevices = filteredDevices.slice(start, end);
-
-      pageDevices.forEach(device => {
-        if (checked) {
-          CONFIG.selectedDevices.add(device.id);
-        } else {
-          CONFIG.selectedDevices.delete(device.id);
+  }
+  function bulkExport() {
+    const devices = getSelectedDevices();
+    if (devices.length === 0) return;
+    exportData('csv');
+  }
+  function bulkTag() {
+    const devices = getSelectedDevices();
+    if (devices.length === 0) return;
+    const tag = prompt('Enter tag name:');
+    if (tag) {
+      fetch('/api/devices/tags/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_ids: Array.from(CONFIG.selectedDevices), tag: tag })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showToast('Tags Added', `Tagged ${devices.length} devices with "${tag}"`, 'success');
+          refreshDevices();
         }
       });
-
-      renderTablePage();
-      updateBulkActions();
     }
-
-    function getSelectedDevices() {
-      return Array.from(CONFIG.selectedDevices).map(id =>
-        currentDevices.find(d => d.id === id)
-      ).filter(Boolean);
+  }
+  function bulkRemediate() {
+    const devices = getSelectedDevices();
+    if (devices.length === 0) return;
+    if (confirm(`Start remediation for ${devices.length} devices? This will attempt to patch vulnerabilities.`)) {
+      showToast('Remediation Started', `Processing ${devices.length} devices...`, 'info', 0);
+      fetch('/api/devices/remediate/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_ids: Array.from(CONFIG.selectedDevices) })
+      })
+      .then(response => response.json())
+      .then(data => {
+        closeAllToasts();
+        if (data.success) {
+          showToast('Remediation Complete', `Processed ${data.processed} devices`, 'success');
+          refreshDevices();
+        }
+      });
     }
+  }
 
-    function clearSelection() {
-      CONFIG.selectedDevices.clear();
-      document.getElementById('selectAll').checked = false;
-      renderTablePage();
-      updateBulkActions();
-    }
-
-    function updateBulkActions() {
-      const count = CONFIG.selectedDevices.size;
-      const bulkActions = document.getElementById('bulkActions');
-
-      if (count > 0) {
-        bulkActions.style.display = 'flex';
-        document.getElementById('selectedCount').textContent = count;
-      } else {
-        bulkActions.style.display = 'none';
-      }
-    }
-
-    // ==================== Bulk Operations ====================
-    function bulkRescan() {
-      const devices = getSelectedDevices();
-      if (devices.length === 0) return;
-
-      if (confirm(`Rescan ${devices.length} devices?`)) {
-        showToast('Rescanning', `Starting scan for ${devices.length} devices...`, 'info');
-        devices.forEach(device => {
-          rescanDevice(device.id);
-        });
-      }
-    }
-
-    function bulkExport() {
-      const devices = getSelectedDevices();
-      if (devices.length === 0) return;
-      exportData('csv');
-    }
-
-    function bulkTag() {
-      const devices = getSelectedDevices();
-      if (devices.length === 0) return;
-
-      const tag = prompt('Enter tag name:');
-      if (tag) {
-        fetch('/api/devices/tags/bulk', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            device_ids: Array.from(CONFIG.selectedDevices),
-            tag: tag
-          })
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            showToast('Tags Added', `Tagged ${devices.length} devices with "${tag}"`, 'success');
-            refreshDevices();
-          }
-        });
-      }
-    }
-
-    function bulkRemediate() {
-      const devices = getSelectedDevices();
-      if (devices.length === 0) return;
-
-      if (confirm(`Start remediation for ${devices.length} devices? This will attempt to patch vulnerabilities.`)) {
-        showToast('Remediation Started', `Processing ${devices.length} devices...`, 'info', 0);
-        fetch('/api/devices/remediate/bulk', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            device_ids: Array.from(CONFIG.selectedDevices)
-          })
-        })
-        .then(response => response.json())
-        .then(data => {
-          closeAllToasts();
-          if (data.success) {
-            showToast('Remediation Complete', `Processed ${data.processed} devices`, 'success');
-            refreshDevices();
-          }
-        });
-      }
-    }
-
-    // ==================== Device Detail View ====================
-    function showDevice(deviceId) {
-      logAuditEvent('view_device', deviceId, 'Viewed device details');
-      showLoading('deviceModal');
-
-      fetch(`/api/devices/${deviceId}`)
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            const device = data.device;
-            renderDeviceDetails(device);
-            document.getElementById('deviceModal').style.display = 'flex';
-          }
-        })
-        .catch(error => {
-          showToast('Error', 'Failed to load device details', 'error');
-        })
-        .finally(() => {
-          hideLoading('deviceModal');
-        });
-    }
-
-    function renderDeviceDetails(device) {
-      document.getElementById('modalTitle').textContent =
-        `${device.ip_address} - ${device.device_type || 'Unknown'}`;
-
-      let html = `
-        <div class="device-detail-grid">
-          <div class="detail-item">
-            <span class="detail-label">Hostname</span>
-            <span class="detail-value">${device.hostname || '-'}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">OS</span>
-            <span class="detail-value">${device.os || 'Unknown'}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Risk Score</span>
-            <span class="detail-value">${device.risk_score || 0}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Risk Level</span>
-            <span class="risk-badge risk-${device.risk_level || 'NONE'}">${device.risk_level || 'NONE'}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Total CVEs</span>
-            <span class="detail-value">${device.total_cves || 0}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Critical CVEs</span>
-            <span class="detail-value">${device.critical_cves || 0}</span>
-          </div>
-          <div class="detail-item" style="grid-column: span 2;">
-            <span class="detail-label">Recommendation</span>
-            <span class="detail-value">${device.recommendations || 'No recommendation'}</span>
-          </div>
-        </div>
-
-        <div class="vulnerability-section">
-          <h4><i class="fas fa-triangle-exclamation"></i> Vulnerabilities</h4>
-      `;
-
-      if (device.vulnerabilities && device.vulnerabilities.length > 0) {
-        html += '<div class="vulnerability-list">';
-        device.vulnerabilities.forEach(vuln => {
-          const severityColor = {
-            CRITICAL: 'var(--critical)',
-            HIGH: 'var(--high)',
-            MEDIUM: 'var(--medium)',
-            LOW: 'var(--low)'
-          }[vuln.severity] || 'var(--text-secondary)';
-
-          html += `
-            <div class="vulnerability-item" style="border-left-color: ${severityColor};">
-      <div class="vuln-header">
-          <a href="/cve/${vuln.cve_id}" target="_blank" style="color: var(--accent); text-decoration: none; font-weight: bold;"
-             onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
-              ${vuln.cve_id}
-          </a>
-          <span class="vuln-severity" style="background: ${severityColor}22; color: ${severityColor};">
-              CVSS ${vuln.cvss_score} (${vuln.severity})
-          </span>
+  // ==================== Device Detail View ====================
+  function showDevice(deviceId) {
+    logAuditEvent('view_device', deviceId, 'Viewed device details');
+    showLoading('deviceModal');
+    fetch(`/api/devices/${deviceId}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const device = data.device;
+          renderDeviceDetails(device);
+          document.getElementById('deviceModal').style.display = 'flex';
+        }
+      })
+      .catch(error => showToast('Error', 'Failed to load device details', 'error'))
+      .finally(() => hideLoading('deviceModal'));
+  }
+  function renderDeviceDetails(device) {
+    document.getElementById('modalTitle').textContent = `${device.ip_address} - ${device.device_type || 'Unknown'}`;
+    let html = `
+      <div class="device-detail-grid">
+        <div class="detail-item"><span class="detail-label">Hostname</span><span class="detail-value">${device.hostname || '-'}</span></div>
+        <div class="detail-item"><span class="detail-label">OS</span><span class="detail-value">${device.os || 'Unknown'}</span></div>
+        <div class="detail-item"><span class="detail-label">Risk Score</span><span class="detail-value">${device.risk_score || 0}</span></div>
+        <div class="detail-item"><span class="detail-label">Risk Level</span><span class="risk-badge risk-${device.risk_level || 'NONE'}">${device.risk_level || 'NONE'}</span></div>
+        <div class="detail-item"><span class="detail-label">Total CVEs</span><span class="detail-value">${device.total_cves || 0}</span></div>
+        <div class="detail-item"><span class="detail-label">Critical CVEs</span><span class="detail-value">${device.critical_cves || 0}</span></div>
+        <div class="detail-item" style="grid-column: span 2;"><span class="detail-label">Recommendation</span><span class="detail-value">${device.recommendations || 'No recommendation'}</span></div>
       </div>
-      <div class="vuln-service">${vuln.service || ''}</div>
-      <div class="vuln-description">${vuln.description || ''}</div>
-  </div>
-          `;
-        });
-        html += '</div>';
-      } else {
-        html += '<p class="no-vulnerabilities"><i class="fas fa-circle-check"></i> No vulnerabilities found</p>';
-      }
-
-      html += '</div>';
-      document.getElementById('modalContent').innerHTML = html;
-    }
-
-    // ==================== Sparkline Charts ====================
-    function renderSparkline(deviceId, history) {
-      const canvas = document.getElementById(`sparkline-${deviceId}`);
-      if (!canvas || history.length === 0) return;
-
-      const ctx = canvas.getContext('2d');
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: history.map(h => h.date),
-          datasets: [{
-            data: history.map(h => h.count),
-            borderColor: '#00d4ff',
-            borderWidth: 2,
-            pointRadius: 0,
-            fill: false,
-            tension: 0.4
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { display: false },
-            y: {
-              display: false,
-              beginAtZero: true
-            }
-          },
-          animation: {
-            duration: 0
-          }
-        }
+      <div class="vulnerability-section"><h4 style="color: var(--neon-cyan);"><i class="fas fa-triangle-exclamation"></i> Vulnerabilities</h4>`;
+    if (device.vulnerabilities && device.vulnerabilities.length > 0) {
+      html += '<div class="vulnerability-list">';
+      device.vulnerabilities.forEach(vuln => {
+        const severityColor = { CRITICAL: 'var(--neon-pink)', HIGH: 'var(--neon-orange)', MEDIUM: 'var(--neon-yellow)', LOW: 'var(--neon-lime)' }[vuln.severity] || 'var(--neon-cyan)';
+        html += `
+          <div class="vulnerability-item" style="border-left-color: ${severityColor};">
+            <div class="vuln-header">
+              <a href="/cve/${vuln.cve_id}" target="_blank" style="color: var(--neon-cyan); text-decoration: none; font-weight: bold;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${vuln.cve_id}</a>
+              <span class="vuln-severity" style="background: ${severityColor}22; color: ${severityColor};">CVSS ${vuln.cvss_score} (${vuln.severity})</span>
+            </div>
+            <div class="vuln-service">${vuln.service || ''}</div>
+            <div class="vuln-description">${vuln.description || ''}</div>
+          </div>
+        `;
       });
+      html += '</div>';
+    } else {
+      html += '<p class="no-vulnerabilities"><i class="fas fa-circle-check"></i> No vulnerabilities found</p>';
     }
+    html += '</div>';
+    document.getElementById('modalContent').innerHTML = html;
+  }
 
-    // ==================== Rescan Device ====================
-    function rescanDevice(deviceId) {
-      if (confirm('Rescan this device for vulnerabilities?')) {
-        showToast('Scanning', 'Initiating vulnerability scan...', 'info', 2000);
-        fetch(`/api/devices/${deviceId}/rescan`, {
-          method: 'POST'
-        })
+  // ==================== Sparkline Charts ====================
+  function renderSparkline(deviceId, history) {
+    const canvas = document.getElementById(`sparkline-${deviceId}`);
+    if (!canvas || history.length === 0) return;
+    const ctx = canvas.getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: history.map(h => h.date),
+        datasets: [{ data: history.map(h => h.count), borderColor: '#00f0ff', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.4 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false, beginAtZero: true } }, animation: { duration: 0 } }
+    });
+  }
+
+  // ==================== Rescan Device ====================
+  function rescanDevice(deviceId) {
+    if (confirm('Rescan this device for vulnerabilities?')) {
+      showToast('Scanning', 'Initiating vulnerability scan...', 'info', 2000);
+      fetch(`/api/devices/${deviceId}/rescan`, { method: 'POST' })
         .then(response => response.json())
         .then(data => {
           if (data.success) {
             showToast('Scan Started', `Scan initiated for device ${deviceId}`, 'success');
             logAuditEvent('rescan_device', deviceId, 'Manual rescan triggered');
-          } else {
-            throw new Error('Scan failed to start');
-          }
+          } else throw new Error('Scan failed to start');
         })
-        .catch(error => {
-          showToast('Scan Failed', error.message, 'error');
-        });
-      }
+        .catch(error => showToast('Scan Failed', error.message, 'error'));
     }
+  }
 
-    // ==================== History View ====================
-    function showHistory(deviceId) {
-      fetch(`/api/devices/${deviceId}/history`)
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            const history = data.history;
-            let html = `
-              <div class="history-view">
-                <h4>📈 Vulnerability History</h4>
-                <canvas id="historyChart" height="200"></canvas>
-                <div class="history-table">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>CVEs</th>
-                        <th>Critical</th>
-                        <th>Risk Score</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            history.forEach(entry => {
-              html += `
-                <tr>
-                  <td>${entry.date}</td>
-                  <td>${entry.total_cves}</td>
-                  <td>${entry.critical_cves}</td>
-                  <td>${entry.risk_score}</td>
-                </tr>
-              `;
-            });
-
-            html += `
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            `;
-
-            // Show in modal
-            document.getElementById('modalTitle').textContent = `History - Device ${deviceId}`;
-            document.getElementById('modalContent').innerHTML = html;
-            document.getElementById('deviceModal').style.display = 'flex';
-
-            // Render history chart
-            setTimeout(() => {
-              renderHistoryChart(history);
-            }, 100);
-          }
-        });
-    }
-
-    function renderHistoryChart(history) {
-      const ctx = document.getElementById('historyChart');
-      if (!ctx) return;
-
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: history.map(h => h.date),
-          datasets: [
-            {
-              label: 'Total CVEs',
-              data: history.map(h => h.total_cves),
-              borderColor: '#ffcc00',
-              backgroundColor: '#ffcc0022',
-              fill: true
-            },
-            {
-              label: 'Critical CVEs',
-              data: history.map(h => h.critical_cves),
-              borderColor: '#ff4444',
-              backgroundColor: '#ff444422',
-              fill: true
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: {
-              labels: { color: '#e0e6ed' }
-            }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: { color: '#8899aa' }
-            },
-            x: {
-              ticks: { color: '#8899aa' }
-            }
-          }
-        }
-      });
-    }
-
-    // ==================== Comparison View ====================
-    function toggleComparison() {
-      const view = document.getElementById('comparisonView');
-      if (view.style.display === 'none') {
-        const selected = getSelectedDevices();
-        if (selected.length < 2) {
-          showToast('Comparison', 'Select at least 2 devices to compare', 'warning');
-          return;
-        }
-        view.style.display = 'block';
-        renderComparison(selected);
-      } else {
-        view.style.display = 'none';
-      }
-    }
-
-    function closeComparison() {
-      document.getElementById('comparisonView').style.display = 'none';
-    }
-
-    function renderComparison(devices) {
-      const container = document.getElementById('comparisonContent');
-      let html = '';
-
-      devices.forEach(device => {
-        html += `
-          <div class="comparison-card ${device.risk_level?.toLowerCase() || ''}">
-            <h5>${device.ip_address}</h5>
-            <div class="comparison-stats">
-              <div class="stat">
-                <span class="stat-label">Risk</span>
-                <span class="risk-badge risk-${device.risk_level || 'NONE'}">${device.risk_level || 'NONE'}</span>
-              </div>
-              <div class="stat">
-                <span class="stat-label">CVEs</span>
-                <span>${device.total_cves || 0}</span>
-              </div>
-              <div class="stat">
-                <span class="stat-label">Critical</span>
-                <span style="color: var(--critical);">${device.critical_cves || 0}</span>
-              </div>
-              <div class="stat">
-                <span class="stat-label">Type</span>
-                <span>${device.device_type || 'Unknown'}</span>
+  // ==================== History View ====================
+  function showHistory(deviceId) {
+    fetch(`/api/devices/${deviceId}/history`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const history = data.history;
+          let html = `
+            <div class="history-view">
+              <h4 style="color: var(--neon-cyan);"><i class="fas fa-chart-line"></i> Vulnerability History</h4>
+              <canvas id="historyChart" height="200"></canvas>
+              <div class="history-table" style="margin-top: 16px; overflow-x: auto;">
+                <table style="width:100%; border-collapse: collapse;">
+                  <thead><tr><th style="color: var(--neon-cyan);">Date</th><th style="color: var(--neon-cyan);">CVEs</th><th style="color: var(--neon-cyan);">Critical</th><th style="color: var(--neon-cyan);">Risk Score</th></tr></thead>
+                  <tbody>
+                    ${history.map(entry => `<tr><td>${entry.date}</td><td>${entry.total_cves}</td><td>${entry.critical_cves}</td><td>${entry.risk_score}</td></tr>`).join('')}
+                  </tbody>
+                </table>
               </div>
             </div>
-          </div>
-        `;
+          `;
+          document.getElementById('modalTitle').textContent = `History - Device ${deviceId}`;
+          document.getElementById('modalContent').innerHTML = html;
+          document.getElementById('deviceModal').style.display = 'flex';
+          setTimeout(() => renderHistoryChart(history), 100);
+        }
       });
-
-      container.innerHTML = html;
-    }
-
-    // ==================== Loading States ====================
-    function showLoading(elementId) {
-      const element = document.getElementById(elementId);
-      if (element) {
-        element.classList.add('loading');
-      }
-    }
-
-    function hideLoading(elementId) {
-      const element = document.getElementById(elementId);
-      if (element) {
-        element.classList.remove('loading');
-      }
-    }
-
-    // ==================== Modal Management ====================
-    function closeModal() {
-      document.getElementById('deviceModal').style.display = 'none';
-    }
-
-    function closeShortcuts() {
-      document.getElementById('shortcutsModal').style.display = 'none';
-    }
-
-    function showShortcuts() {
-      document.getElementById('shortcutsModal').style.display = 'flex';
-    }
-
-    // Close modal on outside click
-    document.getElementById('deviceModal').addEventListener('click', function(e) {
-      if (e.target === this) closeModal();
-    });
-
-    document.getElementById('shortcutsModal').addEventListener('click', function(e) {
-      if (e.target === this) closeShortcuts();
-    });
-
-    // ==================== Keyboard Shortcuts ====================
-    document.addEventListener('keydown', function(e) {
-      // Ctrl+R or Cmd+R - Refresh
-      if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
-        e.preventDefault();
-        refreshDevices();
-      }
-      // Ctrl+F - Focus search
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-        e.preventDefault();
-        document.getElementById('searchInput').focus();
-      }
-      // Ctrl+E - Export
-      if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
-        e.preventDefault();
-        {% if user_role in ['administrator', 'manager'] %}
-        exportData('csv');
-        {% endif %}
-      }
-      // Escape - Close modal
-      if (e.key === 'Escape') {
-        if (document.getElementById('deviceModal').style.display !== 'none') {
-          closeModal();
-        }
-        if (document.getElementById('shortcutsModal').style.display !== 'none') {
-          closeShortcuts();
-        }
-      }
-      // Ctrl+A - Select all
-      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-        e.preventDefault();
-        document.getElementById('selectAll').checked = true;
-        toggleAllDevices();
-      }
-      // Ctrl+Shift+C - Clear selection
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
-        e.preventDefault();
-        clearSelection();
-      }
-      // Ctrl+. - Toggle comparison
-      if ((e.ctrlKey || e.metaKey) && e.key === '.') {
-        e.preventDefault();
-        toggleComparison();
-      }
-      // ? - Show shortcuts
-      if (e.key === '?') {
-        e.preventDefault();
-        showShortcuts();
+  }
+  function renderHistoryChart(history) {
+    const ctx = document.getElementById('historyChart');
+    if (!ctx) return;
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: history.map(h => h.date),
+        datasets: [
+          { label: 'Total CVEs', data: history.map(h => h.total_cves), borderColor: '#ffe600', backgroundColor: '#ffe60022', fill: true },
+          { label: 'Critical CVEs', data: history.map(h => h.critical_cves), borderColor: '#ff4d6d', backgroundColor: '#ff4d6d22', fill: true }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#e0e6ed' } } },
+        scales: { y: { beginAtZero: true, ticks: { color: '#8899aa' } }, x: { ticks: { color: '#8899aa' } } }
       }
     });
+  }
 
-    // ==================== WebSocket Reconnect ====================
-    function reconnectWebSocket() {
-      if (ws && ws.readyState === WebSocket.OPEN) return;
-     // connectWebSocket();
-    }
-
-    // ==================== Initialize ====================
-    document.addEventListener('DOMContentLoaded', function() {
-      refreshDevices();
-     // connectWebSocket();
-
-      // Auto-refresh every 30 seconds if no WebSocket
-      setInterval(() => {
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-          refreshDevices();
-        }
-      }, 30000);
-    });
-
-    // Handle page visibility change - reconnect if needed
-    document.addEventListener('visibilitychange', function() {
-      if (!document.hidden) {
-        reconnectWebSocket();
+  // ==================== Comparison View ====================
+  function toggleComparison() {
+    const view = document.getElementById('comparisonView');
+    if (view.style.display === 'none') {
+      const selected = getSelectedDevices();
+      if (selected.length < 2) {
+        showToast('Comparison', 'Select at least 2 devices to compare', 'warning');
+        return;
       }
-    });
+      view.style.display = 'block';
+      renderComparison(selected);
+    } else {
+      view.style.display = 'none';
+    }
+  }
+  function closeComparison() {
+    document.getElementById('comparisonView').style.display = 'none';
+  }
+  function renderComparison(devices) {
+    const container = document.getElementById('comparisonContent');
+    container.innerHTML = devices.map(device => `
+      <div class="comparison-card ${device.risk_level?.toLowerCase() || ''}">
+        <h5>${device.ip_address}</h5>
+        <div class="comparison-stats">
+          <div class="stat"><span class="stat-label">Risk</span><span class="risk-badge risk-${device.risk_level || 'NONE'}">${device.risk_level || 'NONE'}</span></div>
+          <div class="stat"><span class="stat-label">CVEs</span><span>${device.total_cves || 0}</span></div>
+          <div class="stat"><span class="stat-label">Critical</span><span style="color: var(--neon-pink);">${device.critical_cves || 0}</span></div>
+          <div class="stat"><span class="stat-label">Type</span><span>${device.device_type || 'Unknown'}</span></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ==================== Loading States ====================
+  function showLoading(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) element.classList.add('loading');
+  }
+  function hideLoading(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) element.classList.remove('loading');
+  }
+
+  // ==================== Modal Management ====================
+  function closeModal() {
+    document.getElementById('deviceModal').style.display = 'none';
+  }
+  function closeShortcuts() {
+    document.getElementById('shortcutsModal').style.display = 'none';
+  }
+  function showShortcuts() {
+    document.getElementById('shortcutsModal').style.display = 'flex';
+  }
+  document.getElementById('deviceModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+  document.getElementById('shortcutsModal').addEventListener('click', function(e) {
+    if (e.target === this) closeShortcuts();
+  });
+
+  // ==================== Keyboard Shortcuts ====================
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'r') { e.preventDefault(); refreshDevices(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); document.getElementById('searchInput').focus(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'e') { e.preventDefault(); {% if user_role in ['administrator', 'manager'] %}exportData('csv');{% endif %} }
+    if (e.key === 'Escape') {
+      if (document.getElementById('deviceModal').style.display !== 'none') closeModal();
+      if (document.getElementById('shortcutsModal').style.display !== 'none') closeShortcuts();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'a') { e.preventDefault(); document.getElementById('selectAll').checked = true; toggleAllDevices(); }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') { e.preventDefault(); clearSelection(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === '.') { e.preventDefault(); toggleComparison(); }
+    if (e.key === '?') { e.preventDefault(); showShortcuts(); }
+  });
+
+  // ==================== WebSocket Reconnect ====================
+  function reconnectWebSocket() {
+    if (ws && ws.readyState === WebSocket.OPEN) return;
+    // connectWebSocket(); // uncomment if needed
+  }
+
+  // ==================== Initialize ====================
+  document.addEventListener('DOMContentLoaded', function() {
+    refreshDevices();
+    // connectWebSocket(); // uncomment if needed
+    setInterval(() => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) refreshDevices();
+    }, 30000);
+  });
+
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) reconnectWebSocket();
+  });
 </script>
 {% endblock %}

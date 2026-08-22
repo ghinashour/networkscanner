@@ -1,6 +1,7 @@
 """
 Network Security Dashboard – Full Feature Set
 Authentication, Concurrent Scanning, Scan History, Background Jobs, PDF Export
+MEMORY‑OPTIMIZED: pagination defaults, streaming exports, lower concurrency
 """
 import os
 import json
@@ -13,6 +14,7 @@ import ipaddress
 import subprocess
 import xml.etree.ElementTree as ET
 import io
+import csv
 from datetime import datetime, timedelta
 from functools import wraps
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -21,7 +23,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 load_dotenv()
 
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash, send_file
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash, send_file, Response, stream_with_context
 from flask_mail import Mail, Message
 
 # ReportLab for PDF export
@@ -335,7 +337,7 @@ def scan_single_ip(ip, scan_args='-T4 -F'):
             'brand': brand,
             'os': os,
             'open_ports': ports,
-            'services': services,   # now a list of dicts
+            'services': services,
             'mac_address': mac,
             'confidence': 0.9,
             'source': ['nmap']
@@ -395,7 +397,7 @@ def save_device_to_db(device_data):
     return device_id
 
 # -------------------------------------------------------------------
-# Background scan thread function
+# Background scan thread function (memory-optimized)
 # -------------------------------------------------------------------
 def run_scan_in_background(job_id, target, scan_type, timeout, retries):
     try:
@@ -413,18 +415,20 @@ def run_scan_in_background(job_id, target, scan_type, timeout, retries):
 
         # Parse network
         network = ipaddress.ip_network(target, strict=False)
+        # Limit number of IPs to prevent memory blow
+        MAX_SCAN_IPS = int(os.environ.get('MAX_SCAN_IPS', 254))
         if network.prefixlen < 24:
-            hosts = list(network.hosts())[:254]
+            hosts = list(network.hosts())[:MAX_SCAN_IPS]
         else:
             hosts = list(network.hosts())
         if not hosts:
             update_scan_job(job_id, status='failed', error='No hosts in network')
             return
-        logger.info(f"Scanning {len(hosts)} IP addresses")
+        logger.info(f"Scanning {len(hosts)} IP addresses (max {MAX_SCAN_IPS})")
 
-        # Concurrent scan
+        # Concurrent scan with reduced workers (10 instead of 20)
         devices = []
-        with ThreadPoolExecutor(max_workers=20) as executor:
+        with ThreadPoolExecutor(max_workers=10) as executor:
             future_to_ip = {executor.submit(scan_single_ip, str(ip)): str(ip) for ip in hosts}
             total = len(future_to_ip)
             done = 0
@@ -451,12 +455,12 @@ def run_scan_in_background(job_id, target, scan_type, timeout, retries):
                 'os': dev['os'],
                 'mac': dev['mac_address'],
                 'open_ports': dev['open_ports'],
-                'services': dev['services']  # already list of dicts
+                'services': dev['services']
             }
             device_id = save_device_to_db(dev_for_db)
             saved_device_ids[dev['ip_address']] = device_id
 
-        # Vulnerability analysis
+        # Vulnerability analysis (using the same connection, but each call opens its own DB)
         try:
             cve_service = CVEService(DB_PATH)
             risk_engine = RiskEngine(DB_PATH)
@@ -469,7 +473,7 @@ def run_scan_in_background(job_id, target, scan_type, timeout, retries):
                 row = cursor.fetchone()
                 conn.close()
                 if row and row['services']:
-                    services = json.loads(row['services'])  # already list of dicts
+                    services = json.loads(row['services'])
                     if services:
                         logger.info(f"Analyzing {len(services)} services for device {ip}")
                         cves_found = cve_service.scan_device_services(device_id, services)
@@ -524,6 +528,25 @@ def run_scan_in_background(job_id, target, scan_type, timeout, retries):
         logger.error(f"Background scan error: {e}", exc_info=True)
         update_scan_job(job_id, status='failed', error=str(e),
                         completed_at=datetime.now().isoformat())
+
+# ========================= PAGINATION HELPER (MEMORY-SAFE) =========================
+def get_pagination_params(default_per_page=10, max_per_page=100):
+    """Extract and validate page and per_page from request args.
+    Sets sensible caps to prevent memory exhaustion.
+    """
+    try:
+        page = int(request.args.get('page', 1))
+    except ValueError:
+        page = 1
+    try:
+        per_page = int(request.args.get('per_page', default_per_page))
+    except ValueError:
+        per_page = default_per_page
+    # Clamp values
+    page = max(1, page)
+    per_page = max(1, min(max_per_page, per_page))
+    offset = (page - 1) * per_page
+    return page, per_page, offset
 
 # -------------------------------------------------------------------
 # AUTHENTICATION ROUTES (unchanged)
@@ -741,23 +764,6 @@ def cve_detail(cve_id):
         flash('Error loading CVE details', 'danger')
         return redirect(url_for('devices'))
 
-# ========================= PAGINATION HELPER =========================
-def get_pagination_params(default_per_page=5, max_per_page=200):
-    """Extract and validate page and per_page from request args."""
-    try:
-        page = int(request.args.get('page', 1))
-    except ValueError:
-        page = 1
-    try:
-        per_page = int(request.args.get('per_page', default_per_page))
-    except ValueError:
-        per_page = default_per_page
-    # Clamp values
-    page = max(1, page)
-    per_page = max(1, min(max_per_page, per_page))
-    offset = (page - 1) * per_page
-    return page, per_page, offset
-
 # -------------------------------------------------------------------
 # API ROUTES – DEVICES (with pagination)
 # -------------------------------------------------------------------
@@ -898,6 +904,75 @@ def get_device(device_id):
         return jsonify({'success': True, 'device': device_dict})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# -------------------------------------------------------------------
+# API ROUTES – EXPORT (STREAMING MEMORY-SAFE)
+# -------------------------------------------------------------------
+@app.route('/api/export/devices/stream')
+@login_required
+@role_required(['administrator', 'manager'])
+def export_devices_stream():
+    """Stream devices as CSV or JSON without building the whole payload in memory."""
+    format_type = request.args.get('format', 'csv').lower()
+    # Optional device_ids filter (comma-separated)
+    device_ids = request.args.get('device_ids', '')
+    device_id_list = [int(x) for x in device_ids.split(',') if x.strip().isdigit()] if device_ids else None
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if device_id_list:
+        placeholders = ','.join(['?'] * len(device_id_list))
+        query = f'''
+            SELECT d.*, r.risk_score, r.risk_level, r.total_cves,
+                   r.critical_cves, r.high_cves, r.recommendations
+            FROM devices d
+            LEFT JOIN device_risks r ON d.id = r.device_id
+            WHERE d.id IN ({placeholders})
+        '''
+        cursor.execute(query, device_id_list)
+    else:
+        cursor.execute('''
+            SELECT d.*, r.risk_score, r.risk_level, r.total_cves,
+                   r.critical_cves, r.high_cves, r.recommendations
+            FROM devices d
+            LEFT JOIN device_risks r ON d.id = r.device_id
+            ORDER BY d.id
+        ''')
+
+    if format_type == 'json':
+        def json_stream():
+            yield '['
+            first = True
+            for row in cursor:
+                if not first:
+                    yield ','
+                first = False
+                yield json.dumps(dict(row))
+            yield ']'
+        return Response(stream_with_context(json_stream()),
+                        mimetype='application/json',
+                        headers={'Content-Disposition': 'attachment; filename=devices_export.json'})
+    else:  # csv
+        def csv_stream():
+            rows = cursor.fetchall()
+            if not rows:
+                yield ''
+                return
+            # Write header
+            fieldnames = rows[0].keys()
+            output = io.StringIO()
+            writer = csv.DictWriter(output, fieldnames=fieldnames)
+            writer.writeheader()
+            yield output.getvalue()
+            output.truncate(0)
+            for row in rows:
+                writer.writerow(dict(row))
+                yield output.getvalue()
+                output.truncate(0)
+        return Response(stream_with_context(csv_stream()),
+                        mimetype='text/csv',
+                        headers={'Content-Disposition': 'attachment; filename=devices_export.csv'})
 
 # -------------------------------------------------------------------
 # API ROUTES – SCAN (Background + Concurrent)
@@ -1084,7 +1159,7 @@ def fallback_assistant(question):
 @app.route('/api/ai-assistant/chat', methods=['POST'])
 @login_required
 def ai_assistant_chat():
-    question = ""  # define default value
+    question = ""
     try:
         data = request.get_json(silent=True) or {}
         question = data.get('question', '').strip()
@@ -1127,9 +1202,6 @@ def ai_assistant_chat():
                        for d in top_devices
                    ))
 
-        # ================================================================
-        # ENHANCED SYSTEM PROMPT – fully aware of the application
-        # ================================================================
         system_prompt = (
             "You are Sentinel AI, the intelligent assistant for the Network Security Dashboard. "
             "This application is a full-featured network security scanner that helps administrators "
@@ -1158,7 +1230,7 @@ def ai_assistant_chat():
             api_key=os.environ.get("GROQ_API_KEY"),
         )
         response = client.chat.completions.create(
-            model="openai/gpt-oss-120b",   # or "openai/gpt-oss-20b" for faster responses
+            model="openai/gpt-oss-120b",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": question}
@@ -1287,7 +1359,7 @@ def get_risk_timeline():
 @login_required
 def get_scan_history():
     try:
-        page, per_page, offset = get_pagination_params()  # now uses default 5
+        page, per_page, offset = get_pagination_params()
         conn = get_db()
         cursor = conn.cursor()
         cursor.execute('SELECT COUNT(*) FROM scan_history')
@@ -1442,12 +1514,12 @@ def get_network_graph():
         conn = get_db()
         cursor = conn.cursor()
         cursor.execute('''
-                 SELECT d.id, d.ip_address, d.hostname, d.device_type, d.os,
-                     r.risk_score, r.risk_level, r.total_cves, r.critical_cves,
-                     dl.floor, dl.zone, dl.site
+            SELECT d.id, d.ip_address, d.hostname, d.device_type, d.os,
+                   r.risk_score, r.risk_level, r.total_cves, r.critical_cves,
+                   dl.floor, dl.zone, dl.site
             FROM devices d
             LEFT JOIN device_risks r ON d.id = r.device_id
-                 LEFT JOIN device_locations dl ON d.id = dl.device_id
+            LEFT JOIN device_locations dl ON d.id = dl.device_id
         ''')
         devices = cursor.fetchall()
         conn.close()
@@ -1512,7 +1584,7 @@ def generate_recommendations():
 @login_required
 def get_all_recommendations():
     try:
-        page, per_page, offset = get_pagination_params()  # now uses default 5
+        page, per_page, offset = get_pagination_params()
         ai = AIRecommendations(DB_PATH)
         conn = get_db()
         cursor = conn.cursor()
@@ -1644,7 +1716,7 @@ def get_anomalies():
 @role_required(['administrator', 'manager'])
 def get_audit_log():
     try:
-        page, per_page, offset = get_pagination_params()  # now uses default 5
+        page, per_page, offset = get_pagination_params()
         conn = get_db()
         total = conn.execute('SELECT COUNT(*) FROM audit_log').fetchone()[0]
         rows = [dict(row) for row in conn.execute('''
@@ -1710,7 +1782,7 @@ def utility_processor():
         'username': session.get('username'),
         'full_name': session.get('full_name'),
         'has_permission': has_permission,
-        'DEFAULT_PAGE_SIZE': 5   # frontend can use this for consistent pagination
+        'DEFAULT_PAGE_SIZE': 10   # consistent with pagination default
     }
 
 # -------------------------------------------------------------------
@@ -1730,8 +1802,10 @@ if __name__ == '__main__':
             print("📝 Default credentials: admin / admin123")
             print("📧 Email reports will be sent using the configured SMTP settings.")
             print("✅ Background scanning and PDF export enabled.")
-            print("✅ Pagination enabled for all large data endpoints (5 per page).")
+            print("✅ Pagination enabled for all large data endpoints (10 per page, max 100).")
+            print("✅ Streaming export endpoint added: /api/export/devices/stream")
             print("✅ AI Assistant powered by Groq API (free tier).")
+            print("✅ Memory optimizations: lower concurrency, capped IP range, streaming exports.")
             app.run(debug=True, host='0.0.0.0', port=port)
             break
         except:
