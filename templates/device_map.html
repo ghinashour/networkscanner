@@ -586,6 +586,54 @@
     color: var(--text-secondary);
     font-size: 12px;
   }
+
+  /* ===== FIX: Horizontal stats cards ===== */
+  .stats-grid {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    flex: 1 1 180px;
+    min-width: 150px;
+    background: linear-gradient(145deg, #0e2030e8, #091522e8);
+    border-radius: 8px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border: 1px solid #1e4966;
+    box-shadow:
+      0 12px 28px #0003,
+      inset 0 1px #fff1;
+    transition: 0.2s;
+  }
+  .stat-card:hover {
+    border-color: var(--accent);
+  }
+  .stat-card .stat-icon {
+    font-size: 28px;
+  }
+  .stat-card .stat-content {
+    flex: 1;
+  }
+  .stat-card .stat-number {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .stat-card .stat-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .stat-card.critical .stat-number {
+    color: var(--critical);
+  }
+  .stat-card.medium .stat-number {
+    color: var(--medium);
+  }
+
   @media (max-width: 900px) {
     #campus3d {
       height: 500px;

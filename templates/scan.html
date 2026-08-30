@@ -217,7 +217,7 @@
 <input type="hidden" id="currentJobId" value="" />
 
 <style>
-  /* ====== ENTERPRISE DARK THEME ====== */
+  /* ====== ENTERPRISE DARK THEME (aligned with AI SOC) ====== */
   :root {
     --bg-primary: #0b0e14;
     --bg-secondary: #131a22;
@@ -225,8 +225,11 @@
     --border-color: #2a3a4a;
     --text-primary: #e8edf5;
     --text-secondary: #8a9baa;
-    --accent: #4a9eff;
-    --accent-glow: rgba(74, 158, 255, 0.3);
+    --accent: #20d7f5; /* teal/cyan from SOC */
+    --accent-glow: rgba(32, 215, 245, 0.3);
+    --critical: #ff4444;
+    --high: #ff8800;
+    --medium: #ffcc00;
   }
 
   * {
@@ -250,11 +253,18 @@
     align-items: center;
     flex-wrap: wrap;
     margin-bottom: 24px;
+    background: linear-gradient(110deg, #102f40, #091824 70%);
+    border: 1px solid #2a7182;
+    border-radius: 8px;
+    padding: 20px 22px;
+    box-shadow:
+      0 0 34px #20d7f522,
+      inset 0 1px #fff1;
   }
   .page-header h1 {
     font-size: 28px;
     font-weight: 600;
-    background: linear-gradient(135deg, #4a9eff, #6c5ce7);
+    background: linear-gradient(135deg, #20d7f5, #6c5ce7);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     margin: 0;
@@ -279,6 +289,7 @@
   .btn:hover {
     opacity: 0.85;
     transform: translateY(-1px);
+    box-shadow: 0 0 16px #20d7f522;
   }
   .btn-success {
     background: #00c853;
@@ -287,7 +298,7 @@
   }
   .btn-primary {
     background: var(--accent);
-    color: #fff;
+    color: #0b0e14;
     border-color: var(--accent);
   }
   .btn-secondary {
@@ -310,14 +321,16 @@
     margin-bottom: 24px;
   }
   .stat-card {
-    background: var(--bg-card);
-    border-radius: 12px;
+    background: linear-gradient(145deg, #0e2030e8, #091522e8);
+    border-radius: 8px;
     padding: 16px 20px;
     display: flex;
     align-items: center;
     gap: 16px;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border: 1px solid #1e4966;
+    box-shadow:
+      0 12px 28px #0003,
+      inset 0 1px #fff1;
     transition: 0.2s;
   }
   .stat-card:hover {
@@ -368,16 +381,29 @@
     display: block;
   }
 
+  /* Panels / Sections */
   .scan-config-section,
   .source-breakdown,
   .discovered-devices,
   .scan-log,
   .scan-history {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
+    background: linear-gradient(145deg, #0e2030e8, #091522e8);
+    border: 1px solid #1e4966;
+    border-radius: 8px;
     padding: 20px;
     margin-bottom: 20px;
+    box-shadow:
+      0 12px 28px #0003,
+      inset 0 1px #fff1;
+  }
+  .scan-config-section h3,
+  .source-breakdown h3,
+  .discovered-devices h3,
+  .scan-log h3,
+  .scan-history h3 {
+    margin-top: 0;
+    color: var(--accent);
+    font-size: 16px;
   }
 
   .config-grid {
@@ -401,6 +427,10 @@
     color: var(--text-primary);
     font-size: 14px;
   }
+  .config-item input:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
 
   .progress-container {
     display: flex;
@@ -418,8 +448,18 @@
   .progress-fill {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #4a9eff, #6c5ce7);
+    background: linear-gradient(90deg, #20d7f5, #6c5ce7);
     transition: width 0.3s;
+  }
+  .progress-text {
+    font-size: 14px;
+    color: var(--accent);
+  }
+  .scan-details,
+  .scan-timer {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-top: 6px;
   }
 
   .source-breakdown-grid {
@@ -570,10 +610,13 @@
     gap: 20px;
   }
   .chart-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
+    background: linear-gradient(145deg, #0e2030e8, #091522e8);
+    border: 1px solid #1e4966;
+    border-radius: 8px;
     padding: 16px;
+    box-shadow:
+      0 12px 28px #0003,
+      inset 0 1px #fff1;
   }
   .chart-card h4 {
     margin-top: 0;
@@ -597,14 +640,17 @@
     z-index: 9999;
   }
   .modal-content {
-    background: var(--bg-secondary);
-    border-radius: 12px;
+    background: linear-gradient(145deg, #0e2030e8, #091522e8);
+    border-radius: 8px;
     padding: 24px;
     max-width: 700px;
     width: 90%;
     max-height: 80vh;
     overflow-y: auto;
-    border: 1px solid var(--border-color);
+    border: 1px solid #1e4966;
+    box-shadow:
+      0 12px 28px #0003,
+      inset 0 1px #fff1;
   }
   .modal-header {
     display: flex;
@@ -1097,7 +1143,7 @@
                 {
                   data: typeValues,
                   backgroundColor: [
-                    "#4a9eff",
+                    "#20d7f5",
                     "#6c5ce7",
                     "#00c853",
                     "#ff8800",
@@ -1132,7 +1178,7 @@
                     "#00d4ff",
                     "#ff8800",
                     "#00ff88",
-                    "#4a9eff",
+                    "#20d7f5",
                     "#ff4444",
                   ],
                 },

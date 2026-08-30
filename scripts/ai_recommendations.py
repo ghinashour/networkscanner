@@ -1,49 +1,75 @@
 """
 AI Recommendations Engine - Intelligent Security Recommendations
-Uses ML model and vulnerability data to provide actionable insights
+Uses Groq LLM (or fallback) for generative, context‑aware recommendations.
 """
 
 import sqlite3
 import json
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
+import os
 import logging
+from datetime import datetime
+from typing import Dict, List, Any, Optional
+import requests
 import joblib
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# -----------------------------------------------------------------------------
+# LLM Clients
+# -----------------------------------------------------------------------------
+try:
+    from groq import Groq
+except ImportError:
+    Groq = None
+
+# -----------------------------------------------------------------------------
+# Configuration (read from environment)
+# -----------------------------------------------------------------------------
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-70b-8192")   # updated default
+
+# OpenAI/Ollama fallbacks (optional)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
+
+# Provider: "groq", "openai", or "ollama"
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq")
 
 logger = logging.getLogger(__name__)
 
+
 class AIRecommendations:
-    """Generate intelligent security recommendations using ML and data analysis"""
-    
     def __init__(self, db_path="data/network_scanner.db", model_path=None):
         self.db_path = db_path
         self.model = None
         self.scaler = None
         self.label_encoder = None
-        
-        # Load ML model if available
+        self.feature_names = []
+
         if model_path:
             self.load_model(model_path)
         else:
-            # Try to find latest model
             self._find_latest_model()
-        
+
         self.init_db()
-    
+
+    # -------------------------------------------------------------------------
+    # ML Model Handling
+    # -------------------------------------------------------------------------
     def _find_latest_model(self):
-        """Find the latest trained model"""
         model_dir = Path("data/models")
         if model_dir.exists():
             models = sorted(model_dir.glob("device_classifier_*.pkl"))
             if models:
                 self.load_model(str(models[-1]))
                 logger.info(f"Loaded latest model: {models[-1].name}")
-    
+
     def load_model(self, model_path: str):
-        """Load the ML model"""
         try:
             data = joblib.load(model_path)
             self.model = data.get('model')
@@ -53,13 +79,14 @@ class AIRecommendations:
             logger.info(f"✅ ML model loaded from {model_path}")
         except Exception as e:
             logger.error(f"Error loading model: {e}")
-    
+
+    # -------------------------------------------------------------------------
+    # Database Initialization
+    # -------------------------------------------------------------------------
     def init_db(self):
-        """Initialize recommendations table"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS recommendations (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,77 +101,20 @@ class AIRecommendations:
                     FOREIGN KEY (device_id) REFERENCES devices (id)
                 )
             ''')
-            
             conn.commit()
             conn.close()
             logger.info("✅ Recommendations database initialized")
-            
         except Exception as e:
             logger.error(f"Error initializing recommendations DB: {e}")
-    
-    def generate_all_recommendations(self) -> Dict:
-        """Generate comprehensive recommendations for all devices"""
-        logger.info("Generating AI recommendations for all devices...")
-        
-        results = {
-            'critical': [],
-            'high': [],
-            'medium': [],
-            'low': [],
-            'summary': {}
-        }
-        
-        # Get all devices
-        devices = self._get_devices()
-        
-        if not devices:
-            return {'error': 'No devices found'}
-        
-        for device in devices:
-            device_id = device['id']
-            
-            # Get device vulnerabilities
-            vulns = self._get_device_vulnerabilities(device_id)
-            
-            # Generate recommendations based on device data
-            recs = self._generate_device_recommendations(device, vulns)
-            
-            # Categorize recommendations
-            for rec in recs:
-                if rec['priority'] == 'critical':
-                    results['critical'].append(rec)
-                elif rec['priority'] == 'high':
-                    results['high'].append(rec)
-                elif rec['priority'] == 'medium':
-                    results['medium'].append(rec)
-                else:
-                    results['low'].append(rec)
-                
-                # Save to database
-                self._save_recommendation(device_id, rec)
-        
-        # Generate summary
-        results['summary'] = {
-            'total_recommendations': len(results['critical']) + len(results['high']) + 
-                                     len(results['medium']) + len(results['low']),
-            'critical_count': len(results['critical']),
-            'high_count': len(results['high']),
-            'medium_count': len(results['medium']),
-            'low_count': len(results['low']),
-            'devices_analyzed': len(devices),
-            'timestamp': datetime.now().isoformat()
-        }
-        
-        logger.info(f"✅ Generated {results['summary']['total_recommendations']} recommendations")
-        return results
-    
+
+    # -------------------------------------------------------------------------
+    # Data Retrieval
+    # -------------------------------------------------------------------------
     def _get_devices(self) -> List[Dict]:
-        """Get all devices with their data"""
         try:
             conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            
             cursor.execute('''
                 SELECT d.*, 
                        r.risk_score, r.risk_level, r.total_cves,
@@ -153,22 +123,18 @@ class AIRecommendations:
                 LEFT JOIN device_risks r ON d.id = r.device_id
                 ORDER BY r.risk_score DESC
             ''')
-            
             devices = [dict(row) for row in cursor.fetchall()]
             conn.close()
             return devices
-            
         except Exception as e:
             logger.error(f"Error getting devices: {e}")
             return []
-    
+
     def _get_device_vulnerabilities(self, device_id: int) -> List[Dict]:
-        """Get vulnerabilities for a specific device"""
         try:
             conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            
             cursor.execute('''
                 SELECT c.cve_id, c.description, c.cvss_score, 
                        c.severity, c.published_date, dv.service
@@ -177,48 +143,135 @@ class AIRecommendations:
                 WHERE dv.device_id = ?
                 ORDER BY c.cvss_score DESC
             ''', (device_id,))
-            
             vulns = [dict(row) for row in cursor.fetchall()]
             conn.close()
             return vulns
-            
         except Exception as e:
             logger.error(f"Error getting vulnerabilities for device {device_id}: {e}")
             return []
-    
+
     def _safe_int(self, value, default=0):
-        """Convert value to int, return default if None or non-convertible"""
         if value is None:
             return default
         try:
             return int(value)
         except (ValueError, TypeError):
             return default
-    
+
     def _safe_float(self, value, default=0.0):
-        """Convert value to float, return default if None or non-convertible"""
         if value is None:
             return default
         try:
             return float(value)
         except (ValueError, TypeError):
             return default
-    
-    def _generate_device_recommendations(self, device: Dict, vulns: List[Dict]) -> List[Dict]:
-        """Generate real-world, actionable recommendations for a single device"""
+
+    # -------------------------------------------------------------------------
+    # LLM Integration (Groq)
+    # -------------------------------------------------------------------------
+    def _call_llm(self, prompt: str) -> str:
+        provider = LLM_PROVIDER.lower()
+
+        if provider == "groq":
+            if Groq is None:
+                raise ImportError("Groq library not installed. Run: pip install groq")
+            if not GROQ_API_KEY:
+                raise ValueError("GROQ_API_KEY environment variable not set.")
+            try:
+                client = Groq(api_key=GROQ_API_KEY)
+                response = client.chat.completions.create(
+                    model=GROQ_MODEL,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                    max_tokens=800
+                )
+                return response.choices[0].message.content.strip() # type: ignore
+            except Exception as e:
+                logger.error(f"Groq API error: {e}")
+                raise
+
+        elif provider == "openai":
+            import openai
+            if not OPENAI_API_KEY:
+                raise ValueError("OPENAI_API_KEY not set.")
+            client = openai.OpenAI(api_key=OPENAI_API_KEY)
+            response = client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=800
+            )
+            return response.choices[0].message.content.strip() # type: ignore
+
+        elif provider == "ollama":
+            payload = {
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": 0.3}
+            }
+            resp = requests.post(OLLAMA_URL, json=payload, timeout=60)
+            resp.raise_for_status()
+            return resp.json().get("response", "").strip()
+
+        else:
+            raise ValueError(f"Unsupported LLM provider: {provider}")
+
+    def _generate_llm_recommendations(self, device: Dict, vulns: List[Dict]) -> List[Dict]:
+        prompt = f"""You are an expert security advisor. Based on the following device scan data and known vulnerabilities, provide up to 5 actionable security recommendations. Each recommendation must have a priority (critical, high, medium, low), a title, a description, an action to mitigate, and a type (e.g., vulnerability, hardening, network, os, iot, best_practice, monitoring).
+
+Return the recommendations as a JSON array of objects, with fields: priority, title, description, action, recommendation_type. Do not add any extra text outside the JSON.
+
+Device details:
+- IP: {device.get('ip_address', 'Unknown')}
+- Hostname: {device.get('hostname', 'Unknown')}
+- OS: {device.get('os', 'Unknown')}
+- Device Type: {device.get('device_type', 'Unknown')}
+- Open Ports: {device.get('open_ports', '[]')}
+- Services: {device.get('services', '[]')}
+- Risk Score: {device.get('risk_score', 0)}
+- Total CVEs: {device.get('total_cves', 0)}
+- Critical CVEs: {device.get('critical_cves', 0)}
+- High CVEs: {device.get('high_cves', 0)}
+
+Vulnerabilities (CVEs) affecting this device:
+{json.dumps([{'cve_id': v['cve_id'], 'severity': v.get('severity'), 'description': v.get('description', '')[:150]} for v in vulns], indent=2)}
+
+Prioritize critical and high severity issues. Provide specific, actionable steps. If there are no vulnerabilities, suggest best practices for this device type.
+"""
+        try:
+            response_text = self._call_llm(prompt)
+            # Remove markdown code blocks if present
+            if "```json" in response_text:
+                response_text = response_text.split("```json")[1].split("```")[0].strip()
+            elif "```" in response_text:
+                response_text = response_text.split("```")[1].split("```")[0].strip()
+            recs = json.loads(response_text)
+            if not isinstance(recs, list):
+                raise ValueError("LLM did not return a JSON array.")
+            for r in recs:
+                r.setdefault('recommendation_type', 'general')
+                r.setdefault('priority', 'medium')
+            return recs
+        except Exception as e:
+            logger.error(f"LLM generation failed: {e}. Falling back to rule-based.")
+            return self._generate_rule_based_recommendations(device, vulns)
+
+    # -------------------------------------------------------------------------
+    # Rule-Based Fallback (simplified but comprehensive)
+    # -------------------------------------------------------------------------
+    def _generate_rule_based_recommendations(self, device: Dict, vulns: List[Dict]) -> List[Dict]:
+        """Heuristic rules – used as fallback when LLM fails."""
         recommendations = []
-        
-        # Safely extract numeric values
         risk_score = self._safe_float(device.get('risk_score'), 0.0)
         total_cves = self._safe_int(device.get('total_cves'), 0)
         critical_cves = self._safe_int(device.get('critical_cves'), 0)
         high_cves = self._safe_int(device.get('high_cves'), 0)
-        risk_level = device.get('risk_level', 'NONE')
         device_type = device.get('device_type', 'Unknown')
         os_name = device.get('os', '').lower()
         ip = device.get('ip_address', '')
         hostname = device.get('hostname', '')
-        
+
         # Parse open ports and services
         open_ports = []
         services_list = []
@@ -231,271 +284,217 @@ class AIRecommendations:
                 services_list = json.loads(services_json) if isinstance(services_json, str) else services_json
         except:
             pass
-        
-        # Ensure we have lists
-        open_ports = list(set(open_ports))  # unique
+        open_ports = list(set(open_ports))
         service_names = [s.get('service', '').lower() for s in services_list if isinstance(s, dict)]
-        
-        # ====================================================================
-        # CRITICAL RECOMMENDATIONS
-        # ====================================================================
-        
-        # 1. Critical CVEs
+
+        # Critical
         if critical_cves > 0:
             cve_ids = [v['cve_id'] for v in vulns if v.get('severity') == 'CRITICAL'][:5]
             cve_str = ', '.join(cve_ids[:3])
             recommendations.append({
                 'priority': 'critical',
                 'title': f'🔴 {critical_cves} Critical Vulnerabilities on {hostname or ip}',
-                'description': f'Device has {critical_cves} critical CVEs (e.g., {cve_str}). These require immediate patching or isolation.',
-                'action': f'Apply vendor patches for {cve_str}. If no patch is available, consider network isolation or additional security controls.',
-                'type': 'vulnerability'
+                'description': f'Device has {critical_cves} critical CVEs (e.g., {cve_str}). Immediate patching required.',
+                'action': f'Apply patches for {cve_str}. If no patch, isolate or apply compensating controls.',
+                'recommendation_type': 'vulnerability'
             })
-        
-        # 2. Very high risk score
+
         if risk_score >= 9.0:
             recommendations.append({
                 'priority': 'critical',
                 'title': f'🚨 Extremely High Risk (Score {risk_score:.1f}/10)',
-                'description': f'Device {hostname or ip} has a risk score of {risk_score:.1f} - this is in the highest risk band.',
-                'action': 'Immediate incident response: isolate device, conduct forensic analysis, and implement emergency patching.',
-                'type': 'risk'
+                'description': f'Device {hostname or ip} has a critical risk score.',
+                'action': 'Isolate device, conduct forensic analysis, and implement emergency patching.',
+                'recommendation_type': 'risk'
             })
-        
-        # 3. Specific dangerous services exposed
-        dangerous_services = {
-            'smb': 'SMB (port 445) is often targeted by ransomware (e.g., EternalBlue).',
-            'rdp': 'RDP (port 3389) is a common attack vector for brute-force and credential theft.',
-            'telnet': 'Telnet transmits credentials in plaintext; extremely insecure.',
-            'ftp': 'FTP is unencrypted; use SFTP or FTPS instead.',
-            'snmp': 'SNMP can leak device information and is often misconfigured with default credentials.',
-            'nfs': 'NFS may expose sensitive file shares without proper authentication.'
+
+        # Dangerous services
+        dangerous = {
+            'smb': ('SMB exposed – ransomware risk', 'Disable SMBv1, apply MS17-010, restrict access.'),
+            'rdp': ('RDP exposed – brute‑force risk', 'Use VPN/RDG, enable NLA, enforce strong passwords.'),
+            'telnet': ('Telnet enabled – plaintext credentials', 'Replace with SSH immediately.'),
+            'ftp': ('FTP unencrypted', 'Switch to SFTP/FTPS.'),
         }
-        for service_name in dangerous_services:
-            if service_name in service_names or any(p == port for port in open_ports if port in [445, 3389, 23, 21, 161, 2049]):
-                if service_name == 'smb' and 445 in open_ports:
-                    recommendations.append({
-                        'priority': 'critical',
-                        'title': f'⚠️ SMB Service Exposed (Port 445)',
-                        'description': f'SMB is exposed on {hostname or ip}. This service is frequently used in ransomware attacks.',
-                        'action': 'Disable SMBv1, apply MS17-010 patch, restrict SMB access to trusted subnets, and enforce SMB signing.',
-                        'type': 'hardening'
-                    })
-                elif service_name == 'rdp' and 3389 in open_ports:
-                    recommendations.append({
-                        'priority': 'critical',
-                        'title': f'🔑 RDP Service Exposed (Port 3389)',
-                        'description': f'RDP is open on {hostname or ip}. RDP attacks (brute-force, BlueKeep) are common.',
-                        'action': 'Use a VPN/RDG gateway, enable Network Level Authentication (NLA), enforce strong passwords, and enable account lockout.',
-                        'type': 'hardening'
-                    })
-                elif service_name == 'telnet':
-                    recommendations.append({
-                        'priority': 'critical',
-                        'title': f'🚫 Telnet Enabled (Insecure)',
-                        'description': 'Telnet transmits credentials in plaintext and is vulnerable to interception.',
-                        'action': 'Immediately disable Telnet and replace with SSH. Use SSH with key-based authentication.',
-                        'type': 'hardening'
-                    })
-                break  # only one critical service recommendation
-        
-        # ====================================================================
-        # HIGH RECOMMENDATIONS
-        # ====================================================================
-        
-        # 4. High CVEs
+        for svc, (desc, action) in dangerous.items():
+            if svc == 'smb' and 445 in open_ports:
+                recommendations.append({
+                    'priority': 'critical',
+                    'title': f'⚠️ SMB Service Exposed (Port 445)',
+                    'description': f'SMB exposed on {hostname or ip}. {desc}',
+                    'action': action,
+                    'recommendation_type': 'hardening'
+                })
+                break
+            elif svc == 'rdp' and 3389 in open_ports:
+                recommendations.append({
+                    'priority': 'critical',
+                    'title': f'🔑 RDP Service Exposed (Port 3389)',
+                    'description': f'RDP open on {hostname or ip}. {desc}',
+                    'action': action,
+                    'recommendation_type': 'hardening'
+                })
+                break
+            elif svc == 'telnet':
+                recommendations.append({
+                    'priority': 'critical',
+                    'title': f'🚫 Telnet Enabled',
+                    'description': f'Telnet running on {hostname or ip}. {desc}',
+                    'action': action,
+                    'recommendation_type': 'hardening'
+                })
+                break
+
+        # High
         if high_cves > 0:
             high_cve_ids = [v['cve_id'] for v in vulns if v.get('severity') == 'HIGH'][:3]
-            rec = {
+            recommendations.append({
                 'priority': 'high',
-                'title': f'🟠 {high_cves} High-Severity Vulnerabilities',
-                'description': f'Device has {high_cves} high CVEs (e.g., {", ".join(high_cve_ids)}). These should be patched soon.',
-                'action': f'Apply patches for {", ".join(high_cve_ids)}. Test in staging before production.',
-                'type': 'vulnerability'
-            }
-            recommendations.append(rec)
-        
-        # 5. Outdated OS / EOL
+                'title': f'🟠 {high_cves} High‑Severity Vulnerabilities',
+                'description': f'Device has {high_cves} high CVEs (e.g., {", ".join(high_cve_ids)}).',
+                'action': f'Apply patches for {", ".join(high_cve_ids)} within 30 days.',
+                'recommendation_type': 'vulnerability'
+            })
+
         eol_indicators = ['windows 7', 'windows 8', 'ubuntu 16', 'centos 6', 'debian 8', 'rhel 6']
-        if any(indicator in os_name for indicator in eol_indicators):
+        if any(ind in os_name for ind in eol_indicators):
             recommendations.append({
                 'priority': 'high',
-                'title': '🔄 End-of-Life Operating System Detected',
-                'description': f'{hostname or ip} is running {device["os"]}, which is no longer supported with security updates.',
-                'action': f'Plan migration to a supported OS (e.g., Windows Server 2022, Ubuntu 22.04, RHEL 9). Schedule within 60 days.',
-                'type': 'os'
+                'title': '🔄 End-of-Life Operating System',
+                'description': f'{hostname or ip} runs {device["os"]} (unsupported).',
+                'action': 'Plan migration to a supported OS (e.g., Windows Server 2022, Ubuntu 22.04).',
+                'recommendation_type': 'os'
             })
-        
-        # 6. Server with many vulnerabilities
-        if device_type == 'Server' and total_cves > 8:
-            recommendations.append({
-                'priority': 'high',
-                'title': '🖥️ Server Security Hardening Needed',
-                'description': f'Server {hostname or ip} has {total_cves} vulnerabilities. Servers are prime targets.',
-                'action': 'Implement server hardening benchmarks (CIS, DISA STIG). Review firewall rules, disable unused services, and enforce least privilege.',
-                'type': 'hardening'
-            })
-        
-        # 7. Excessive open ports (high attack surface)
+
         if len(open_ports) > 15:
             recommendations.append({
                 'priority': 'high',
-                'title': '🔌 Excessive Open Ports (Attack Surface)',
-                'description': f'Device has {len(open_ports)} open ports, increasing potential entry points.',
-                'action': f'Review and close unnecessary ports. Use firewall to restrict access to only required services. Current open ports: {", ".join(map(str, open_ports[:10]))}...',
-                'type': 'network'
+                'title': '🔌 Excessive Open Ports (Large Attack Surface)',
+                'description': f'{len(open_ports)} open ports on {hostname or ip}.',
+                'action': 'Review and close unnecessary ports.',
+                'recommendation_type': 'network'
             })
-        
-        # 8. Weak or no hostname (asset management issue)
-        if not hostname or hostname == '':
+
+        if not hostname:
             recommendations.append({
                 'priority': 'high',
                 'title': '🏷️ Missing Hostname',
-                'description': f'Device {ip} lacks a proper hostname, making management and incident response difficult.',
-                'action': 'Assign a descriptive hostname (e.g., SRV-DB01, USR-LAPTOP-01) in DNS and local host file.',
-                'type': 'best_practice'
+                'description': f'Device {ip} lacks a hostname.',
+                'action': 'Assign a descriptive hostname in DNS.',
+                'recommendation_type': 'best_practice'
             })
-        
-        # ====================================================================
-        # MEDIUM RECOMMENDATIONS
-        # ====================================================================
-        
-        # 9. Medium/low vulnerabilities (if no critical/high)
+
+        # Medium/Low
         if total_cves > 0 and critical_cves == 0 and high_cves == 0:
-            rec = {
+            recommendations.append({
                 'priority': 'medium',
                 'title': f'📋 {total_cves} Medium/Low Vulnerabilities',
-                'description': 'Device has manageable vulnerabilities that should be addressed in routine maintenance.',
-                'action': 'Apply available security patches. Review risk acceptance policy for low severity issues.',
-                'type': 'vulnerability'
-            }
-            recommendations.append(rec)
-        
-        # 10. IoT device
+                'description': 'Manageable vulnerabilities – address in routine maintenance.',
+                'action': 'Apply patches and review risk acceptance for low severity.',
+                'recommendation_type': 'vulnerability'
+            })
+
         if device_type == 'IoT':
             recommendations.append({
                 'priority': 'medium',
                 'title': '📡 IoT Device Security Review',
-                'description': f'IoT device {hostname or ip} may have limited security capabilities and firmware update challenges.',
-                'action': 'Check for firmware updates. Isolate IoT devices in a separate VLAN. Disable UPnP, Telnet, and default credentials.',
-                'type': 'iot'
+                'description': f'IoT device {hostname or ip} may have limited security.',
+                'action': 'Check firmware updates; isolate in separate VLAN; disable UPnP/Telnet/default credentials.',
+                'recommendation_type': 'iot'
             })
-        
-        # 11. Open SSH with weak configuration
+
         if 22 in open_ports and 'ssh' in service_names:
             recommendations.append({
                 'priority': 'medium',
-                'title': '🔑 SSH Server Configuration',
-                'description': f'SSH is open on {hostname or ip}. Ensure secure configuration.',
-                'action': 'Disable root login, enforce key-based authentication, change default port (optional), and set LoginGraceTime to 30s.',
-                'type': 'hardening'
+                'title': '🔑 SSH Hardening',
+                'description': f'SSH open on {hostname or ip}.',
+                'action': 'Disable root login, enforce key-based auth, change default port (optional).',
+                'recommendation_type': 'hardening'
             })
-        
-        # 12. Web services (HTTP/HTTPS) open
-        web_ports = [80, 443, 8080, 8443]
-        if any(p in open_ports for p in web_ports):
-            recommendations.append({
-                'priority': 'medium',
-                'title': '🌐 Web Service Exposure',
-                'description': f'Web services are running on {hostname or ip}. Ensure they are up-to-date and secure.',
-                'action': 'Apply web server patches, enable HTTPS with strong TLS, configure security headers (HSTS, CSP), and use WAF if applicable.',
-                'type': 'network'
-            })
-        
-        # 13. No recent scan (stale data)
-        last_seen = device.get('last_seen')
-        if last_seen:
-            try:
-                last_seen_dt = datetime.fromisoformat(last_seen.replace('Z', '+00:00'))
-                if (datetime.now() - last_seen_dt).days > 30:
-                    recommendations.append({
-                        'priority': 'medium',
-                        'title': '🕒 Device Not Scanned Recently',
-                        'description': f'Last scan for {hostname or ip} was more than 30 days ago.',
-                        'action': 'Schedule a new network scan to refresh vulnerability data and device inventory.',
-                        'type': 'monitoring'
-                    })
-            except:
-                pass
-        
-        # ====================================================================
-        # LOW RECOMMENDATIONS (Best Practices)
-        # ====================================================================
-        
-        # 14. Best practice: regular scanning
-        if total_cves == 0:
-            recommendations.append({
-                'priority': 'low',
-                'title': '✅ Device Appears Secure - Continue Monitoring',
-                'description': f'No vulnerabilities found on {hostname or ip}. Keep monitoring.',
-                'action': 'Maintain regular scanning schedule (e.g., weekly). Review security policies quarterly.',
-                'type': 'monitoring'
-            })
-        
-        # 15. Windows Workstation specific
-        if 'windows' in os_name and device_type != 'Server':
-            recommendations.append({
-                'priority': 'low',
-                'title': '💻 Windows Workstation Best Practices',
-                'description': f'Ensure Windows workstation {hostname or ip} is properly configured.',
-                'action': 'Verify Windows Update settings, enable Windows Defender, enable BitLocker, and enforce LAPS for local admin passwords.',
-                'type': 'best_practice'
-            })
-        
-        # 16. Router/Switch
-        if device_type == 'Router':
-            recommendations.append({
-                'priority': 'low',
-                'title': '🌐 Network Device Security',
-                'description': f'Router {hostname or ip} should have secure management and up-to-date firmware.',
-                'action': 'Disable telnet, enable SSH, enforce ACLs, update firmware, and use SNMPv3 with strong community strings.',
-                'type': 'network'
-            })
-        
-        # 17. Printer / Multi-function device
-        if 'printer' in device_type.lower():
-            recommendations.append({
-                'priority': 'low',
-                'title': '🖨️ Printer Security',
-                'description': 'Printers can be entry points. Ensure secure configuration.',
-                'action': 'Disable unnecessary protocols (FTP, Telnet). Enable secure printing (IPSec). Keep firmware updated.',
-                'type': 'hardening'
-            })
-        
-        # 18. No firewall recommendation if not detected
-        # (We can't detect firewall, but we can recommend enabling it)
+
+        # Always add a generic firewall recommendation (low priority)
         recommendations.append({
             'priority': 'low',
             'title': '🛡️ Enable Host Firewall',
-            'description': f'Ensure host-based firewall is enabled on {hostname or ip} to limit inbound traffic.',
-            'action': 'Enable Windows Firewall or iptables/nftables. Configure default deny inbound, allow outbound.',
-            'type': 'best_practice'
+            'description': f'Ensure host-based firewall is enabled on {hostname or ip}.',
+            'action': 'Enable Windows Firewall or iptables/nftables; default deny inbound.',
+            'recommendation_type': 'best_practice'
         })
-        
-        # Remove duplicates based on title (keep first occurrence)
-        seen_titles = set()
-        unique_recs = []
+
+        # Deduplicate and limit
+        seen = set()
+        unique = []
         for rec in recommendations:
-            if rec['title'] not in seen_titles:
-                seen_titles.add(rec['title'])
-                unique_recs.append(rec)
-        
-        # Limit to max 8 recommendations per device to avoid spam
-        return unique_recs[:8]
-    
+            if rec['title'] not in seen:
+                seen.add(rec['title'])
+                unique.append(rec)
+        return unique[:8]
+
+    # -------------------------------------------------------------------------
+    # Main Generation Method
+    # -------------------------------------------------------------------------
+    def generate_all_recommendations(self, use_llm: bool = True) -> Dict:
+        logger.info("Generating AI recommendations...")
+        results = {
+            'critical': [],
+            'high': [],
+            'medium': [],
+            'low': [],
+            'summary': {}
+        }
+
+        devices = self._get_devices()
+        if not devices:
+            return {'error': 'No devices found'}
+
+        for device in devices:
+            device_id = device['id']
+            vulns = self._get_device_vulnerabilities(device_id)
+
+            if use_llm:
+                try:
+                    recs = self._generate_llm_recommendations(device, vulns)
+                except Exception as e:
+                    logger.warning(f"LLM failed for device {device_id}: {e}. Falling back to rules.")
+                    recs = self._generate_rule_based_recommendations(device, vulns)
+            else:
+                recs = self._generate_rule_based_recommendations(device, vulns)
+
+            for rec in recs:
+                priority = rec.get('priority', 'medium').lower()
+                if priority not in ['critical', 'high', 'medium', 'low']:
+                    priority = 'medium'
+                rec['priority'] = priority
+                results[priority].append(rec)
+                self._save_recommendation(device_id, rec)
+
+        results['summary'] = {
+            'total_recommendations': (len(results['critical']) + len(results['high']) +
+                                      len(results['medium']) + len(results['low'])),
+            'critical_count': len(results['critical']),
+            'high_count': len(results['high']),
+            'medium_count': len(results['medium']),
+            'low_count': len(results['low']),
+            'devices_analyzed': len(devices),
+            'timestamp': datetime.now().isoformat()
+        }
+
+        logger.info(f"✅ Generated {results['summary']['total_recommendations']} recommendations")
+        return results
+
+    # -------------------------------------------------------------------------
+    # Database Save & API Methods
+    # -------------------------------------------------------------------------
     def _save_recommendation(self, device_id: int, rec: Dict):
-        """Save recommendation to database"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
             cursor.execute('''
                 INSERT INTO recommendations 
                 (device_id, recommendation_type, priority, title, description, action, created_date, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 device_id,
-                rec.get('type', 'general'),
+                rec.get('recommendation_type', 'general'),
                 rec['priority'],
                 rec['title'],
                 rec['description'],
@@ -503,112 +502,88 @@ class AIRecommendations:
                 datetime.now().isoformat(),
                 'pending'
             ))
-            
             conn.commit()
             conn.close()
-            
         except Exception as e:
             logger.error(f"Error saving recommendation: {e}")
-    
+
     def get_device_recommendations(self, device_id: int) -> List[Dict]:
-        """Get recommendations for a specific device"""
         try:
             conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            
             cursor.execute('''
                 SELECT * FROM recommendations
                 WHERE device_id = ?
-                ORDER BY 
-                    CASE priority 
-                        WHEN 'critical' THEN 1 
-                        WHEN 'high' THEN 2 
-                        WHEN 'medium' THEN 3 
-                        WHEN 'low' THEN 4 
-                    END
+                ORDER BY CASE priority 
+                    WHEN 'critical' THEN 1 
+                    WHEN 'high' THEN 2 
+                    WHEN 'medium' THEN 3 
+                    WHEN 'low' THEN 4 
+                END
             ''', (device_id,))
-            
             recs = [dict(row) for row in cursor.fetchall()]
             conn.close()
             return recs
-            
         except Exception as e:
             logger.error(f"Error getting recommendations: {e}")
             return []
-    
+
     def get_all_recommendations(self) -> List[Dict]:
-        """Get all recommendations"""
         try:
             conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            
             cursor.execute('''
                 SELECT r.*, d.ip_address, d.device_type
                 FROM recommendations r
                 JOIN devices d ON r.device_id = d.id
-                ORDER BY 
-                    CASE priority 
-                        WHEN 'critical' THEN 1 
-                        WHEN 'high' THEN 2 
-                        WHEN 'medium' THEN 3 
-                        WHEN 'low' THEN 4 
-                    END,
-                    r.created_date DESC
+                ORDER BY CASE priority 
+                    WHEN 'critical' THEN 1 
+                    WHEN 'high' THEN 2 
+                    WHEN 'medium' THEN 3 
+                    WHEN 'low' THEN 4 
+                END,
+                r.created_date DESC
             ''')
-            
             recs = [dict(row) for row in cursor.fetchall()]
             conn.close()
             return recs
-            
         except Exception as e:
             logger.error(f"Error getting all recommendations: {e}")
             return []
-    
+
     def update_recommendation_status(self, rec_id: int, status: str):
-        """Update recommendation status (pending, in_progress, done, dismissed)"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
-            cursor.execute('''
-                UPDATE recommendations 
-                SET status = ? 
-                WHERE id = ?
-            ''', (status, rec_id))
-            
+            cursor.execute('UPDATE recommendations SET status = ? WHERE id = ?', (status, rec_id))
             conn.commit()
             conn.close()
             return {'success': True}
-            
         except Exception as e:
             logger.error(f"Error updating recommendation status: {e}")
             return {'success': False, 'error': str(e)}
-    
+
     def get_recommendation_summary(self) -> Dict:
-        """Get summary statistics for recommendations"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
-            # Total recommendations by priority
+            # Fixed: use aliases for count columns
             cursor.execute('''
                 SELECT priority, COUNT(*) as count
                 FROM recommendations
                 GROUP BY priority
             ''')
-            priority_counts = dict(cursor.fetchall())
-            
-            # Total recommendations by status
+            priority_counts = {row[0]: row[1] for row in cursor.fetchall()}
+
             cursor.execute('''
                 SELECT status, COUNT(*) as count
                 FROM recommendations
                 GROUP BY status
             ''')
-            status_counts = dict(cursor.fetchall())
-            
-            # Most common recommendation types
+            status_counts = {row[0]: row[1] for row in cursor.fetchall()}
+
             cursor.execute('''
                 SELECT recommendation_type, COUNT(*) as count
                 FROM recommendations
@@ -616,10 +591,9 @@ class AIRecommendations:
                 ORDER BY count DESC
                 LIMIT 5
             ''')
-            type_counts = dict(cursor.fetchall())
-            
+            type_counts = {row[0]: row[1] for row in cursor.fetchall()}
+
             conn.close()
-            
             return {
                 'priority_counts': priority_counts,
                 'status_counts': status_counts,
@@ -627,44 +601,6 @@ class AIRecommendations:
                 'total': sum(priority_counts.values()),
                 'timestamp': datetime.now().isoformat()
             }
-            
         except Exception as e:
             logger.error(f"Error getting recommendation summary: {e}")
             return {}
-
-
-# ============================================================================
-# QUICK TEST
-# ============================================================================
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("🤖 AI RECOMMENDATIONS ENGINE TEST")
-    print("=" * 60)
-    
-    # Initialize
-    ai = AIRecommendations()
-    
-    # Generate recommendations
-    results = ai.generate_all_recommendations()
-    
-    if 'error' in results:
-        print(f"❌ Error: {results['error']}")
-    else:
-        print("\n📊 Summary:")
-        summary = results['summary']
-        print(f"   Devices Analyzed: {summary['devices_analyzed']}")
-        print(f"   Total Recommendations: {summary['total_recommendations']}")
-        print(f"   Critical: {summary['critical_count']}")
-        print(f"   High: {summary['high_count']}")
-        print(f"   Medium: {summary['medium_count']}")
-        print(f"   Low: {summary['low_count']}")
-        
-        print("\n🔴 Top Critical Recommendations:")
-        for rec in results['critical'][:3]:
-            print(f"   - {rec['title']}")
-            print(f"     {rec['description'][:100]}...")
-            print(f"     Action: {rec['action'][:100]}...")
-            print()
-    
-    print("\n" + "=" * 60)

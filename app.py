@@ -45,6 +45,19 @@ from scripts.threat_intelligence import ThreatIntelligence
 from scripts.anomaly_detection import compute_anomaly_scores, get_anomaly_summary, ensure_tables
 from scripts.exploit_intelligence import ExploitIntelligence
 
+# ====================================================================
+# IMPORT YOUR WORKING SCANNER – file is advanced_scanner.py (with underscore)
+# ====================================================================
+try:
+    from scripts.advanced_scanner import EnhancedNetworkScanner
+    SCANNER_AVAILABLE = True
+except ImportError as e:
+    SCANNER_AVAILABLE = False
+    EnhancedNetworkScanner = None  # ensures the name is always defined
+    print(f"⚠️ EnhancedNetworkScanner not found in scripts.advanced_scanner: {e}")
+    print("   Scanning will fall back to the old (incomplete) method.")
+
+
 # -------------------------------------------------------------------
 # Logging
 # -------------------------------------------------------------------
@@ -52,12 +65,22 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # -------------------------------------------------------------------
-# App config
+# App config – fix DB_PATH if it's a SQLite URL
 # -------------------------------------------------------------------
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'local-development-only-change-me')
+
+# Get DB_PATH from environment, but strip 'sqlite:///' if present
 DB_PATH = os.environ.get('DB_PATH', 'data/network_scanner.db')
+if DB_PATH.startswith('sqlite:///'):
+    DB_PATH = DB_PATH[10:]  # remove 'sqlite:///'
+elif DB_PATH.startswith('sqlite:'):
+    DB_PATH = DB_PATH[7:]   # just in case
+
+# Ensure the directory exists
 os.makedirs(os.path.dirname(DB_PATH) or '.', exist_ok=True)
+
+# Fallback to default if still missing
 DEFAULT_DB_PATH = 'data/network_scanner.db'
 if DB_PATH != DEFAULT_DB_PATH and not os.path.exists(DB_PATH) and os.path.exists(DEFAULT_DB_PATH):
     shutil.copy2(DEFAULT_DB_PATH, DB_PATH)
@@ -277,127 +300,7 @@ def get_scan_job(job_id):
     return dict(job) if job else None
 
 # -------------------------------------------------------------------
-# Concurrent scanning functions
-# -------------------------------------------------------------------
-# Check if nmap is available
-def check_nmap():
-    try:
-        subprocess.run(['nmap', '--version'], capture_output=True, check=True)
-        return True
-    except (subprocess.SubprocessError, FileNotFoundError):
-        return False
-
-OUI_CACHE = {}
-
-def lookup_brand(mac):
-    if not mac:
-        return 'Unknown'
-    prefix = mac[:8].upper().replace(':', '')
-    if prefix in OUI_CACHE:
-        return OUI_CACHE[prefix]
-    return 'Unknown'
-
-def scan_single_ip(ip, scan_args='-T4 -F'):
-    """Scan a single IP with nmap and return device dict or None."""
-    try:
-        cmd = ['nmap', '-oX', '-', scan_args, ip]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-        if result.returncode != 0:
-            logger.warning(f"nmap scan for {ip} returned non-zero: {result.returncode}")
-            return None
-        root = ET.fromstring(result.stdout)
-        host = root.find('host')
-        if host is None:
-            return None
-        addr = host.find('address')
-        ip_addr = addr.get('addr') if addr is not None else ip
-        hostname_elem = host.find('hostnames/hostname')
-        hostname = hostname_elem.get('name') if hostname_elem is not None else ''
-        os_elem = host.find('os/osmatch')
-        os = os_elem.get('name') if os_elem is not None else 'Unknown'
-        ports = []
-        services = []   # store as list of dicts {service, port}
-        ports_elem = host.find('ports')
-        if ports_elem is not None:
-            for port in ports_elem.findall('port'):
-                port_id = port.get('portid')
-                state = port.find('state')
-                if state is not None and state.get('state') == 'open':
-                    service = port.find('service')
-                    service_name = service.get('name') if service is not None else 'unknown'
-                    ports.append(int(port_id)) # type: ignore
-                    services.append({'service': service_name, 'port': int(port_id)}) # type: ignore
-        mac_elem = host.find('address[@addrtype="mac"]')
-        mac = mac_elem.get('addr') if mac_elem is not None else ''
-        brand = lookup_brand(mac)
-        return {
-            'ip_address': ip_addr,
-            'hostname': hostname,
-            'device_type': 'Unknown',
-            'brand': brand,
-            'os': os,
-            'open_ports': ports,
-            'services': services,
-            'mac_address': mac,
-            'confidence': 0.9,
-            'source': ['nmap']
-        }
-    except Exception as e:
-        logger.error(f"Error scanning {ip}: {e}")
-        return None
-
-def save_device_to_db(device_data):
-    """Insert or update a device record from a scan result."""
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute('SELECT id FROM devices WHERE ip_address = ?', (device_data.get('ip'),))
-    existing = cursor.fetchone()
-    if existing:
-        cursor.execute('''
-            UPDATE devices SET
-                hostname = ?,
-                device_type = ?,
-                os = ?,
-                mac_address = ?,
-                open_ports = ?,
-                services = ?,
-                last_seen = ?
-            WHERE ip_address = ?
-        ''', (
-            device_data.get('hostname', ''),
-            device_data.get('device_type', 'Unknown'),
-            device_data.get('os', 'Unknown'),
-            device_data.get('mac', ''),
-            json.dumps(device_data.get('open_ports', [])),
-            json.dumps(device_data.get('services', [])),
-            datetime.now().isoformat(),
-            device_data.get('ip')
-        ))
-        device_id = existing['id']
-    else:
-        cursor.execute('''
-            INSERT INTO devices
-                (ip_address, mac_address, hostname, device_type, os,
-                 open_ports, services, first_seen, last_seen)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            device_data.get('ip'),
-            device_data.get('mac', ''),
-            device_data.get('hostname', ''),
-            device_data.get('device_type', 'Unknown'),
-            device_data.get('os', 'Unknown'),
-            json.dumps(device_data.get('open_ports', [])),
-            json.dumps(device_data.get('services', [])),
-            datetime.now().isoformat(),
-            datetime.now().isoformat()
-        ))
-        device_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
-    return device_id
-
-# -------------------------------------------------------------------
-# Background scan thread function (memory-optimized)
+# Background scan thread using EnhancedNetworkScanner
 # -------------------------------------------------------------------
 def run_scan_in_background(job_id, target, scan_type, timeout, retries):
     try:
@@ -405,68 +308,64 @@ def run_scan_in_background(job_id, target, scan_type, timeout, retries):
         update_scan_job(job_id, status='running', started_at=datetime.now().isoformat())
         start_time = datetime.now()
 
-        # Check nmap
-        if not check_nmap():
-            error_msg = "nmap not found in PATH. Please install nmap."
+        if not SCANNER_AVAILABLE:
+            error_msg = "EnhancedNetworkScanner not available. Please ensure scripts/advanced_scanner.py exists and contains the class."
             logger.error(error_msg)
             update_scan_job(job_id, status='failed', error=error_msg,
                             completed_at=datetime.now().isoformat())
             return
 
-        # Parse network
-        network = ipaddress.ip_network(target, strict=False)
-        # Limit number of IPs to prevent memory blow
-        MAX_SCAN_IPS = int(os.environ.get('MAX_SCAN_IPS', 254))
-        if network.prefixlen < 24:
-            hosts = list(network.hosts())[:MAX_SCAN_IPS]
-        else:
-            hosts = list(network.hosts())
-        if not hosts:
-            update_scan_job(job_id, status='failed', error='No hosts in network')
-            return
-        logger.info(f"Scanning {len(hosts)} IP addresses (max {MAX_SCAN_IPS})")
+        # Instantiate the working scanner (uses the same DB)
+        scanner = EnhancedNetworkScanner(db_path='data/network_scanner.db') # type: ignore
+        results = scanner.scan_network(target=target)
+        devices = results.get('devices', [])
 
-        # Concurrent scan with reduced workers (10 instead of 20)
-        devices = []
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            future_to_ip = {executor.submit(scan_single_ip, str(ip)): str(ip) for ip in hosts}
-            total = len(future_to_ip)
-            done = 0
-            for future in as_completed(future_to_ip):
-                result = future.result()
-                if result:
-                    devices.append(result)
-                done += 1
-                progress = int((done / total) * 100)
-                update_scan_job(job_id, progress=progress)
-                if done % 10 == 0:
-                    logger.info(f"Scan progress: {done}/{total} IPs scanned, found {len(devices)} devices")
+        # ========== CONVERT to the format expected by the front-end ==========
+        # The scanner returns 'discovery_source' (list), but the UI expects 'source'
+        # Also the scanner returns confidence as percentage (0-100) but UI expects 0-1
+        for dev in devices:
+            # Alias the source
+            if 'discovery_source' in dev:
+                dev['source'] = dev['discovery_source']
+            else:
+                dev['source'] = ['nmap']  # fallback
+            # Convert confidence to float 0-1
+            if 'confidence' in dev:
+                dev['confidence'] = dev['confidence'] / 100.0
+            # Ensure all expected keys exist (UI may rely on them)
+            dev.setdefault('mac_address', '')
+            dev.setdefault('hostname', '')
+            dev.setdefault('brand', 'Unknown')
+            dev.setdefault('device_type', 'Unknown')
+            dev.setdefault('os', 'Unknown')
+            dev.setdefault('open_ports', [])
+            dev.setdefault('services', [])
+            # The scanner may already have these but we ensure they are present
 
         duration = (datetime.now() - start_time).total_seconds()
         logger.info(f"Scan completed in {duration:.2f}s, found {len(devices)} devices")
 
-        # Save devices to DB and run vulnerability analysis
+        # The scanner already saved devices to the DB, but we need the device IDs
+        # for vulnerability analysis. Fetch them from the DB.
         saved_device_ids = {}
+        conn = get_db()
+        cursor = conn.cursor()
         for dev in devices:
-            dev_for_db = {
-                'ip': dev['ip_address'],
-                'hostname': dev['hostname'],
-                'device_type': dev['device_type'],
-                'os': dev['os'],
-                'mac': dev['mac_address'],
-                'open_ports': dev['open_ports'],
-                'services': dev['services']
-            }
-            device_id = save_device_to_db(dev_for_db)
-            saved_device_ids[dev['ip_address']] = device_id
+            ip = dev.get('ip_address')
+            if not ip:
+                continue
+            cursor.execute('SELECT id FROM devices WHERE ip_address = ?', (ip,))
+            row = cursor.fetchone()
+            if row:
+                saved_device_ids[ip] = row['id']
+        conn.close()
 
-        # Vulnerability analysis (using the same connection, but each call opens its own DB)
+        # Vulnerability analysis (unchanged)
         try:
             cve_service = CVEService(DB_PATH)
             risk_engine = RiskEngine(DB_PATH)
             threat_intel = ThreatIntelligence(DB_PATH)
             for ip, device_id in saved_device_ids.items():
-                # re‑fetch device to get services
                 conn = get_db()
                 cursor = conn.cursor()
                 cursor.execute('SELECT services FROM devices WHERE id = ?', (device_id,))
@@ -1065,7 +964,7 @@ def export_scan_pdf(job_id):
             dev.get('device_type', ''),
             dev.get('os', ''),
             ports,
-            f"{dev.get('confidence', 0)*100:.1f}%",
+            f"{dev.get('confidence', 0)*100:.1f}%",  # now confidence is 0-1
             sources
         ])
 
@@ -1806,6 +1705,7 @@ if __name__ == '__main__':
             print("✅ Streaming export endpoint added: /api/export/devices/stream")
             print("✅ AI Assistant powered by Groq API (free tier).")
             print("✅ Memory optimizations: lower concurrency, capped IP range, streaming exports.")
+            print("✅ Now using EnhancedNetworkScanner from scripts.advanced_scanner for full OS/Brand/Type detection.")
             app.run(debug=True, host='0.0.0.0', port=port)
             break
         except:

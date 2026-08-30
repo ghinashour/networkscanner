@@ -67,12 +67,19 @@ try:
 except ImportError:
     REQUESTS_AVAILABLE = False
 
+# Try netifaces for better gateway detection
+try:
+    import netifaces
+    NETIFACES_AVAILABLE = True
+except ImportError:
+    NETIFACES_AVAILABLE = False
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 # ============================================================================
-# MAC VENDOR DATABASE (unchanged – same as before)
+# MAC VENDOR DATABASE (expanded with common brands)
 # ============================================================================
 MAC_VENDORS = {
     # Apple
@@ -351,16 +358,24 @@ class EnhancedNetworkScanner:
         return f"{parts[0]}.{parts[1]}.{parts[2]}.0/24"
 
     # ============================================================================
-    # MAC UTILITIES (unchanged)
+    # MAC UTILITIES - FIXED
     # ============================================================================
     def _normalize_mac(self, mac: str) -> str:
         if not mac:
             return ''
-        mac = mac.replace('-', ':').upper()
-        parts = mac.split(':')
-        if len(parts) == 6:
-            return ':'.join(f'{int(p, 16):02X}' for p in parts)
-        return mac
+        # Remove any separators (colons, dashes, dots, spaces)
+        mac = re.sub(r'[^0-9A-Fa-f]', '', mac)
+        if len(mac) != 12:
+            return mac  # fallback, unlikely
+        # Insert colon every two characters
+        mac = ':'.join(mac[i:i+2] for i in range(0, 12, 2))
+        return mac.upper()
+
+    def _get_oui_from_mac(self, mac: str) -> str:
+        mac = self._normalize_mac(mac)
+        if len(mac) >= 17:  # 'XX:XX:XX:...'
+            return mac[:8]  # first 3 octets
+        return ''
 
     def _get_mac_from_arp_cache(self, ip: str) -> str:
         mac = ''
@@ -402,14 +417,6 @@ class EnhancedNetworkScanner:
     # ============================================================================
     # OUI LOOKUP (unchanged)
     # ============================================================================
-    def _get_oui_from_mac(self, mac: str) -> str:
-        if not mac:
-            return ''
-        parts = mac.replace('-', ':').split(':')
-        if len(parts) >= 3:
-            return ':'.join(parts[:3]).upper()
-        return ''
-
     def _lookup_oui_online(self, oui: str) -> Optional[str]:
         if not oui:
             return None
@@ -543,7 +550,7 @@ class EnhancedNetworkScanner:
             logger.warning(f"Failed to save MAC cache: {e}")
 
     # ============================================================================
-    # OS DETECTION (unchanged – all methods kept)
+    # OS DETECTION - IMPROVED
     # ============================================================================
     def _detect_os(self, ip: str, ttl: Optional[int], open_ports: List[int],
                    hostname: str, mac: str = '') -> Dict[str, Any]:
@@ -749,7 +756,7 @@ class EnhancedNetworkScanner:
                 return 'iOS'
         except:
             pass
-        ttl = self._get_ttl(ip)   # this still uses system ping – but we'll replace later
+        ttl = self._get_ttl(ip)   # system ping fallback
         if ttl:
             ttl_info = self._detect_os_from_ttl(ttl)
             return ttl_info['os']
@@ -767,7 +774,6 @@ class EnhancedNetworkScanner:
         return 'Unknown'
 
     def _get_ttl(self, ip: str) -> Optional[int]:
-        # This is used only as a fallback – but we will use Scapy for TTL primarily.
         try:
             if sys.platform.startswith('win'):
                 cmd = ['ping', '-n', '1', ip]
@@ -786,11 +792,20 @@ class EnhancedNetworkScanner:
         return None
 
     # ============================================================================
-    # DEFAULT GATEWAY (unchanged)
+    # DEFAULT GATEWAY - IMPROVED
     # ============================================================================
     def _get_default_gateway(self) -> Optional[str]:
         try:
-            if sys.platform.startswith('win'):
+            if NETIFACES_AVAILABLE:
+                gateways = netifaces.gateways()
+                default = gateways.get('default', {})
+                if default and netifaces.AF_INET in default:
+                    return default[netifaces.AF_INET][0]
+        except:
+            pass
+
+        if sys.platform.startswith('win'):
+            try:
                 result = subprocess.run(['ipconfig'], capture_output=True, text=True, timeout=2)
                 for line in result.stdout.split('\n'):
                     if 'Default Gateway' in line:
@@ -799,7 +814,10 @@ class EnhancedNetworkScanner:
                             gateway = parts[1].strip()
                             if gateway and not gateway.startswith('::'):
                                 return gateway
-            else:
+            except:
+                pass
+        else:
+            try:
                 result = subprocess.run(['ip', 'route', 'show', 'default'], capture_output=True, text=True, timeout=2)
                 for line in result.stdout.split('\n'):
                     if 'default' in line:
@@ -807,9 +825,13 @@ class EnhancedNetworkScanner:
                         for i, part in enumerate(parts):
                             if part == 'via' and i + 1 < len(parts):
                                 return parts[i+1]
-        except:
-            pass
-        return None
+            except:
+                pass
+
+        # Fallback: guess from local IP
+        local_ip = self._get_local_ip()
+        parts = local_ip.split('.')
+        return f"{parts[0]}.{parts[1]}.{parts[2]}.1"
 
     # ============================================================================
     # UPNP DISCOVERY (unchanged)
@@ -923,14 +945,14 @@ class EnhancedNetworkScanner:
                 if not mac:
                     mac = self._get_mac_from_arp_cache(ip)
 
-                # Get TTL via Scapy ICMP echo (if possible)
+                # Get TTL via Scapy ICMP echo, fallback to TCP SYN, then system ping
                 ttl = None
                 if self.scapy_available and self.permissions_ok:
                     ttl = self._get_ttl_with_scapy(ip)
-                # If Scapy failed, use fallback (system ping) – but we want to avoid ping.
-                # We'll keep a fallback to system ping only if Scapy is not available.
+                    if ttl is None:
+                        ttl = self._get_ttl_with_tcp(ip)  # try TCP SYN
                 if ttl is None and not (self.scapy_available and self.permissions_ok):
-                    ttl = self._get_ttl(ip)  # system ping
+                    ttl = self._get_ttl(ip)  # system ping (last resort)
 
                 hostname = self._get_hostname(ip)
 
@@ -948,14 +970,8 @@ class EnhancedNetworkScanner:
         # If we reach here, no devices found.
         logger.warning("No devices discovered by nmap or scapy.")
         return []
-    # Inside real_scan, after saving devices:
-    try:
-        from scripts.anomaly_detection import compute_anomaly_scores
-        compute_anomaly_scores()
-    except Exception as e:
-        logger.error(f"Anomaly training failed: {e}")
 
-        # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Scapy helpers
     # -------------------------------------------------------------------------
     def _get_mac_with_scapy(self, ip: str) -> str:
@@ -987,6 +1003,19 @@ class EnhancedNetworkScanner:
             logger.debug(f"Scapy ICMP request for {ip} failed: {e}")
         return None
 
+    def _get_ttl_with_tcp(self, ip: str, port: int = 80) -> Optional[int]:
+        """Send TCP SYN to a common port and extract TTL from SYN-ACK."""
+        if not self.scapy_available or not self.permissions_ok:
+            return None
+        try:
+            pkt = IP(dst=ip) / TCP(dport=port, flags='S')
+            reply = sr1(pkt, timeout=2, verbose=False)
+            if reply and reply.haslayer(TCP):
+                return reply.ttl
+        except Exception:
+            pass
+        return None
+
     def _arp_scan_scapy(self, ip_range: str) -> List[Dict[str, Any]]:
         """Full ARP scan over the whole subnet – used as fallback."""
         if not self.scapy_available or not self.permissions_ok:
@@ -1010,7 +1039,7 @@ class EnhancedNetworkScanner:
             ip = received.psrc
             mac = received.hwsrc
             hostname = self._get_hostname(ip)
-            ttl = self._get_ttl_with_scapy(ip) or self._get_ttl(ip)
+            ttl = self._get_ttl_with_scapy(ip) or self._get_ttl_with_tcp(ip) or self._get_ttl(ip)
             devices.append({
                 'ip_address': ip,
                 'mac_address': self._normalize_mac(mac),
@@ -1077,23 +1106,40 @@ class EnhancedNetworkScanner:
         return services.get(port, f'port_{port}')
 
     # ============================================================================
-    # DEVICE INTELLIGENCE (unchanged)
+    # DEVICE INTELLIGENCE - FIXED
     # ============================================================================
     def _detect_device_type(self, hostname: str, os_name: str, open_ports: List[int],
                             mac: str, ip: str, ttl: Optional[int] = None) -> str:
+        # 1. Gateway check (highest priority)
         gateway = self._get_default_gateway()
         if gateway and ip == gateway:
             return 'Router'
+
+        # 2. If IP ends with .1 and has typical router infrastructure ports
+        if ip.endswith('.1') and any(p in open_ports for p in [53, 67, 68]):
+            return 'Router'
+
+        # 3. Vendor-based router detection (but only if not obviously Windows)
         vendor = self._get_vendor_from_mac(mac)
         router_vendors = ['cisco', 'netgear', 'tp-link', 'd-link', 'linksys', 'asus',
                           'netis', 'mikrotik', 'ubiquiti', 'juniper', 'huawei', 'zte']
         if any(v in vendor.lower() for v in router_vendors):
-            return 'Router'
+            # If the OS is already detected as Windows, override vendor guess
+            if 'windows' not in os_name.lower():
+                return 'Router'
+
+        # 4. Hostname-based router keywords
         if hostname:
             host_lower = hostname.lower()
             router_keywords = ['router', 'gateway', 'ap', 'wifi', 'wlan', 'netis', 'cisco', 'tp-link']
-            if any(kw in host_lower for kw in router_keywords):
+            if any(kw in host_lower for kw in router_keywords) and 'windows' not in os_name.lower():
                 return 'Router'
+
+        # 5. OS detection: if Windows, classify as PC
+        if 'windows' in os_name.lower():
+            return 'Windows_PC'
+
+        # 6. Mobile device detection (randomized MAC, hostname keywords, or TTL heuristics)
         is_mobile = False
         if self._is_randomized_mac(mac):
             is_mobile = True
@@ -1103,10 +1149,8 @@ class EnhancedNetworkScanner:
                                'moto', 'motorola', 'oppo', 'vivo', 'realme']
             if any(kw in hostname.lower() for kw in mobile_keywords):
                 is_mobile = True
-        if ttl:
-            if ttl in [64, 128]:
-                if not open_ports:
-                    is_mobile = True
+        if ttl and ttl in [64, 128] and not open_ports:
+            is_mobile = True
         if is_mobile:
             if hostname and any(kw in hostname.lower() for kw in ['iphone', 'ipad', 'ipod', 'ios']):
                 return 'iPhone/iPad'
@@ -1114,31 +1158,47 @@ class EnhancedNetworkScanner:
                 return 'iOS Device'
             else:
                 return 'Mobile'
-        router_ports = {53, 67, 68, 69, 161, 162, 23, 80, 443, 8080}
-        if len(set(open_ports) & router_ports) >= 2:
-            return 'Router'
+
+        # 7. Windows-specific open ports (SMB + RDP)
         if 445 in open_ports and 3389 in open_ports:
             return 'Windows_PC'
+
+        # 8. Mac-specific port (AFP)
         if 548 in open_ports:
             return 'Mac'
+
+        # 9. Linux server (SSH + HTTP)
         if 22 in open_ports and 80 in open_ports:
             return 'Linux_Server'
+
+        # 10. Web server (HTTP + HTTPS) – but only if not already classified as router
         if 80 in open_ports and 443 in open_ports:
             return 'WebServer'
+
+        # 11. Router-specific ports (exclude 80, 443, 8080 to avoid false positives)
+        router_ports = {53, 67, 68, 69, 161, 162, 23}
+        if len(set(open_ports) & router_ports) >= 2:
+            return 'Router'
+
+        # 12. TTL > 200 often indicates network devices
         if ttl and ttl > 200:
             return 'Network_Device'
+
+        # 13. Fallback based on OS name
         if 'android' in os_name.lower():
             return 'Mobile'
         if 'ios' in os_name.lower():
             return 'iPhone/iPad'
-        if 'windows' in os_name.lower():
-            return 'PC'
         if 'linux' in os_name.lower():
             return 'Linux_PC'
         if 'macos' in os_name.lower():
             return 'Mac'
+
+        # 14. Last resort: randomized MAC with no ports → likely mobile
         if not open_ports and self._is_randomized_mac(mac):
             return 'Mobile'
+
+        # 15. Original fallback (kept for completeness)
         return self._detect_device_type_original(hostname, os_name, open_ports, mac)
 
     def _detect_device_type_original(self, hostname: str, os_name: str, open_ports: List[int], mac: str) -> str:
@@ -1181,45 +1241,46 @@ class EnhancedNetworkScanner:
 
     def _detect_brand(self, mac: str, hostname: str) -> str:
         brand = self._get_vendor_from_mac(mac)
-        if brand != 'Unknown' and 'Randomized' not in brand:
-            return brand
-        if hostname:
-            hostname_lower = hostname.lower()
-            if 'apple' in hostname_lower or 'mac' in hostname_lower or 'iphone' in hostname_lower or 'ipad' in hostname_lower:
-                return 'Apple'
-            if 'samsung' in hostname_lower:
-                return 'Samsung'
-            if 'huawei' in hostname_lower:
-                return 'Huawei'
-            if 'xiaomi' in hostname_lower or 'redmi' in hostname_lower or 'poco' in hostname_lower:
-                return 'Xiaomi'
-            if 'google' in hostname_lower or 'pixel' in hostname_lower:
-                return 'Google'
-            if 'cisco' in hostname_lower:
-                return 'Cisco'
-            if 'hp' in hostname_lower:
-                return 'HP'
-            if 'dell' in hostname_lower:
-                return 'Dell'
-            if 'lenovo' in hostname_lower:
-                return 'Lenovo'
-            if 'asus' in hostname_lower:
-                return 'Asus'
-            if 'raspberry' in hostname_lower:
-                return 'Raspberry Pi'
-            if 'netis' in hostname_lower:
-                return 'Netis Technologies'
-            if 'espressif' in hostname_lower:
-                return 'Espressif'
-            if 'oneplus' in hostname_lower:
-                return 'OnePlus'
-            if 'oppo' in hostname_lower:
-                return 'OPPO'
-            if 'vivo' in hostname_lower:
-                return 'Vivo'
-            if 'realme' in hostname_lower:
-                return 'Realme'
-        return 'Unknown'
+        # If vendor not recognized, try to infer from hostname
+        if brand.startswith('Unknown') or brand == '':
+            if hostname:
+                host_lower = hostname.lower()
+                if 'apple' in host_lower or 'mac' in host_lower or 'iphone' in host_lower or 'ipad' in host_lower:
+                    return 'Apple'
+                if 'samsung' in host_lower:
+                    return 'Samsung'
+                if 'huawei' in host_lower:
+                    return 'Huawei'
+                if 'xiaomi' in host_lower or 'redmi' in host_lower or 'poco' in host_lower:
+                    return 'Xiaomi'
+                if 'google' in host_lower or 'pixel' in host_lower:
+                    return 'Google'
+                if 'cisco' in host_lower:
+                    return 'Cisco'
+                if 'hp' in host_lower:
+                    return 'HP'
+                if 'dell' in host_lower:
+                    return 'Dell'
+                if 'lenovo' in host_lower:
+                    return 'Lenovo'
+                if 'asus' in host_lower:
+                    return 'Asus'
+                if 'raspberry' in host_lower:
+                    return 'Raspberry Pi'
+                if 'netis' in host_lower:
+                    return 'Netis Technologies'
+                if 'espressif' in host_lower:
+                    return 'Espressif'
+                if 'oneplus' in host_lower:
+                    return 'OnePlus'
+                if 'oppo' in host_lower:
+                    return 'OPPO'
+                if 'vivo' in host_lower:
+                    return 'Vivo'
+                if 'realme' in host_lower:
+                    return 'Realme'
+            return 'Unknown'
+        return brand
 
     def _calculate_confidence(self, mac: str, os_info: Dict, open_ports: List[int],
                               hostname: str, upnp_details: Dict, device_type: str,
